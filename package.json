@@ -1,0 +1,13 @@
+{
+  "name": "QQBot-Plugin",
+  "type": "module",
+  "author": "TimeRainStarSky",
+  "dependencies": {
+    "@windtrace/qq-group-bot": "1.0.19",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.33.5",
+    "silk-wasm": "^3.6.3",
+    "tweetnacl": "^1.0.3",
+    "url-regex-safe": "^4.0.0"
+  }
+}
