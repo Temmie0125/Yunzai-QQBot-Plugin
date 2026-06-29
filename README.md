@@ -194,6 +194,16 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
+</details>
+
+<details><summary>ws官机支持扫码登录</summary>
+
+- 可以直接发送`#QQBot扫码登录`生成二维码和登录链接，扫码或者点击链接并选择合适的bot登录即可，注意❗❗❗：此登录方法会成功会重置旧的secret，请确定是否需要使用此功能登录，否则请使用`#QQBot设置`登录Bot
+
+- 若启动时无任何bot，则自动获取登录二维码和链接显示在日志中，方便首次登录
+
+</details>
+
 ## 问题反馈
 
 - [🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)反馈

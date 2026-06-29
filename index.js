@@ -3,6 +3,7 @@ logger.info(logger.yellow("- 正在加载 QQBot 适配器插件"))
 import makeConfig from "../../lib/plugins/config.js"
 import fs from "node:fs/promises"
 import path from "node:path"
+import crypto from 'node:crypto'
 import YAML from "yaml"
 import QRCode from "qrcode"
 import { initGroupInfoMap, fetchGroupInfo } from "./lib/groupInfo.js"
@@ -1655,10 +1656,106 @@ const adapter = new class QQBotAdapter {
             await Bot.sleep(5000, this.connect(token))
 
         await initGroupInfoMap()
+
+        // 无 token 时自动启动扫码登录
+        if (!config.token.length) {
+            this._autoQrLogin().catch(err => {
+                logger.error(`[QQBot] 自动扫码登录失败: ${err.message}`)
+            })
+        }
+    }
+
+    async _autoQrLogin() {
+        const { taskId, key } = await _qrCreateBindTask()
+        const qrUrl = QR_URL_TPL.replace('{task_id}', taskId)
+        const qrText = await QRCode.toString(qrUrl, { type: 'terminal', small: true })
+        logger.mark(`\n======== QQBot 未配置任何账号，正在生成扫码登录二维码 ========\n${qrText}\n可使用手机 QQ 扫码登录 QQBot，或打开链接：\n${qrUrl}\n注意：此种方法登录会自动重置登录Bot的secret，请自行决定是否使用\n`)
+
+        const bindData = await _qrPollBindResult(taskId)
+        if (!bindData) {
+            logger.warn('扫码登录超时，可稍后通过 #QQBot扫码登录 重新发起')
+            return
+        }
+
+        const secret = _qrDecryptSecret(bindData.bot_encrypt_secret, key)
+        const uin = await _qrGetRobotUin(bindData.bot_appid)
+        if (!uin) {
+            logger.error('获取机器人 uin 失败')
+            return
+        }
+
+        const uinStr = String(uin)
+        const newToken = `${uinStr}:${bindData.bot_appid}:default占位:${secret}:1:0`
+        config.token.push(newToken)
+        await configSave()
+
+        await this.connect(newToken)
+        logger.mark(`QQBot ${uinStr} 扫码登录并连接成功`)
     }
 }
 
 Bot.adapter.push(adapter)
+
+// QR 扫码登录相关常量
+const PORTAL_HOST = 'q.qq.com'
+const CREATE_PATH = '/lite/create_bind_task'
+const POLL_PATH = '/lite/poll_bind_result'
+const QR_URL_TPL = 'https://q.qq.com/qqbot/openclaw/connect.html?task_id={task_id}&_wv=2&source=windtrace'
+const SHARE_INFO_URL = 'https://qun.qq.com/cgi-bin/group_pro/robot/manager/share_info'
+const BKN = 508459323
+const QR_HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'windtrace/1.0',
+    'X-Source': 'windtrace',
+}
+
+// QR 扫码登录核心函数（模块级，供 adapter 和 plugin class 共用）
+async function _qrCreateBindTask() {
+    const key = crypto.randomBytes(32).toString('base64')
+    const res = await fetch(`https://${PORTAL_HOST}${CREATE_PATH}`, {
+        method: 'POST',
+        headers: QR_HEADERS,
+        body: JSON.stringify({ key }),
+    })
+    const json = await res.json()
+    if (json.retcode !== 0) throw new Error(json.msg || '创建绑定任务失败')
+    return { taskId: json.data.task_id, key }
+}
+
+async function _qrPollBindResult(taskId) {
+    const deadline = Date.now() + 300000
+    while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2000))
+        const res = await fetch(`https://${PORTAL_HOST}${POLL_PATH}`, {
+            method: 'POST',
+            headers: QR_HEADERS,
+            body: JSON.stringify({ task_id: taskId }),
+        })
+        const json = await res.json()
+        if (json.retcode !== 0) continue
+        if (json.data.status === 2) return json.data
+        if (json.data.status === 3) return null
+    }
+    return null
+}
+
+function _qrDecryptSecret(cipherBase64, keyBase64) {
+    const buf = Buffer.from(cipherBase64, 'base64')
+    const key = Buffer.from(keyBase64, 'base64')
+    const nonce = buf.subarray(0, 12)
+    const tag = buf.subarray(-16)
+    const cipher = buf.subarray(12, -16)
+
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce)
+    decipher.setAuthTag(tag)
+    return decipher.update(cipher, undefined, 'utf8') + decipher.final('utf8')
+}
+
+async function _qrGetRobotUin(appId) {
+    const res = await fetch(`${SHARE_INFO_URL}?bkn=${BKN}&robot_appid=${appId}`)
+    const json = await res.json()
+    return json?.data?.robot_data?.robot_uin
+}
 
 export class QQBotAdapter extends plugin {
     constructor() {
@@ -1736,7 +1833,12 @@ export class QQBotAdapter extends plugin {
                     reg: '^#取消群号绑定$',
                     fnc: 'cmdUnbindGroupQQ',
                     permission: 'master',
-                }
+                },
+                {
+                    reg: '^#QQBot(扫码)?登录$',
+                    fnc: 'qrlogin',
+                    permission: 'master',
+                },
             ]
         })
     }
@@ -1952,6 +2054,83 @@ export class QQBotAdapter extends plugin {
           await redis.del(`wind-group-info:${existing}`)
         }
         this.reply(`已取消绑定：当前群 ↔ QQ群 ${existing}`)
+    }
+
+    // ====== QR 扫码登录 ======
+    async qrlogin(e) {
+        if (this._qrLoginRunning) {
+            return e.reply('已有扫码登录任务正在进行中，请等待完成后再试')
+        }
+        this._qrLoginRunning = true
+
+        try {
+            await e.reply('正在生成二维码，请稍候...')
+
+            const { taskId, key } = await _qrCreateBindTask()
+            const qrUrl = QR_URL_TPL.replace('{task_id}', taskId)
+
+            await e.reply([
+                '请使用手机 QQ 扫码或打开链接：\r',
+                segment.image(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`),
+                `\r链接：${qrUrl}\r>注意:使用此方法登录QQBot会自动刷新Secret，请自行留意。`,
+            ])
+
+            const bindData = await _qrPollBindResult(taskId)
+            if (!bindData) {
+                return e.reply('二维码已过期，请重新发起 #QQBot扫码登录')
+            }
+
+            const secret = _qrDecryptSecret(bindData.bot_encrypt_secret, key)
+            const uin = await _qrGetRobotUin(bindData.bot_appid)
+            if (!uin) {
+                return e.reply('获取机器人 uin 失败，请检查 BKN 是否有效')
+            }
+
+            await this._saveAndConnectBot(uin, bindData.bot_appid, secret)
+
+            return e.reply(
+                [
+                    '#QQBot 登录成功',
+                    `UIN: ${uin}`,
+                    `AppID: ${bindData.bot_appid}`,
+                    `Secret: 详情见 QQBot 配置`,
+                ].join('\n')
+            )
+        } finally {
+            this._qrLoginRunning = false
+        }
+    }
+
+    async _saveAndConnectBot(uin, appId, secret) {
+        const uinStr = String(uin)
+        const newToken = `${uinStr}:${appId}:default占位:${secret}:1:0`
+
+        // 更新或新增 config.token
+        const idx = config.token.findIndex(t => t.split(':')[0] === uinStr)
+        if (idx >= 0) {
+            config.token[idx] = newToken
+        } else {
+            config.token.push(newToken)
+        }
+        await configSave()
+
+        // 热加载 Bot 实例
+        if (Bot[uinStr] && Bot[uinStr].sdk?.config) {
+            Bot[uinStr].sdk.config.secret = secret
+            Bot[uinStr].info.secret = secret
+            const sm = Bot[uinStr].sdk.sessionManager
+            if (sm) {
+                sm.tokenTask = null
+                if (sm.tokenTimer) {
+                    clearTimeout(sm.tokenTimer)
+                    sm.tokenTimer = null
+                }
+            }
+        } else {
+            const tokenEntry = `${uinStr}:${appId}:default占位:${secret}:1:0`
+            await adapter.connect(tokenEntry)
+            await new Promise(r => setTimeout(r, 1000))
+        }
     }
 }
 
