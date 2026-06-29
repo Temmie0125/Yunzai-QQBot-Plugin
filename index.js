@@ -2125,6 +2125,9 @@ export class QQBotAdapter extends plugin {
 
         // 热加载 Bot 实例
         if (Bot[uinStr] && Bot[uinStr].sdk?.config) {
+            // 已有实例：停止旧连接，用新 secret 重新连接
+            try { Bot[uinStr].sdk.stop() } catch {}
+            await new Promise(r => setTimeout(r, 500))
             Bot[uinStr].sdk.config.secret = secret
             Bot[uinStr].info.secret = secret
             const sm = Bot[uinStr].sdk.sessionManager
@@ -2134,6 +2137,13 @@ export class QQBotAdapter extends plugin {
                     clearTimeout(sm.tokenTimer)
                     sm.tokenTimer = null
                 }
+                sm.wsUrl = null
+                sm.access_token = null
+                sm.fatalError = false
+                sm.tokenExpired = false
+                sm.userClose = false
+                sm.retry = 0
+                await sm.start()
             }
         } else {
             const tokenEntry = `${uinStr}:${appId}:default占位:${secret}:1:0`
