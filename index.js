@@ -63,6 +63,15 @@ import MsgIdxDB from './model/MsgIdxDB.js'
 import ActiveListDB from './model/ActiveListDB.js'
 
 await msgSequelize.sync()
+
+// SQLite 手动补齐新增列（sync() 不会 ALTER 已有表）
+try {
+  await msgSequelize.query("ALTER TABLE messages ADD COLUMN bot_nickname TEXT DEFAULT ''")
+} catch (e) {
+  // 列已存在时忽略
+  if (!e.message?.includes('duplicate column')) logger.debug('[QQBot] bot_nickname 列已存在')
+}
+
 await loadBlacklist()
 
 Bot.MessageDB = MessageDB
