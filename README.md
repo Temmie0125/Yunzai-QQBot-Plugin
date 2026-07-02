@@ -204,6 +204,35 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
+<details><summary>获取群成员信息</summary>
+
+- 在插件中，可以通过以下几种方式获取指定用户信息
+
+```
+  await e.member.getGroupMemberInfo() //直接获取当前用户的群成员信息
+  await e.group.pickMember(user_id).getGroupMemberInfo() //获取当前群指定用户信息
+  await e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo() //获取指定群指定用户信息
+  如果需要获取自己bot信息，可以使用
+  await e.group.pickMember(e.bot_opneid).getGroupMemberInfo() //获取当前bot信息e.bot_openid为当前bot的openid当在全量群艾特机器人后会自动记录，请在使用前自行确保e.bot_openid存在
+```
+
+- 本接口返回信息是已经经过处理过的，并非官方返回的原始结构，大致结构如下：
+
+```
+{
+  "openid": "用户openid",
+  "unionid": "用户unionid",
+  "avatar": "用户头像",
+  "card": "用户昵称",
+  "nickname": "用户昵称",
+  "join_time": 入群时间戳,
+  "role": "当前用户在群中身份，owner/admin/member对应群主/管理员/群员",
+  "bot": 是否bot
+}
+```
+
+</details>
+
 ## 问题反馈
 
 - [🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)反馈

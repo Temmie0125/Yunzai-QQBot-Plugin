@@ -38,6 +38,7 @@ const { config, configSave } = await makeConfig("QQBot", {
         timeout: 30000,
     },
     token: [],
+    bot_openid: {}
 }, {
     tips: [
         "欢迎使用 TRSS-Yunzai QQBot Plugin自用改版 ! 作者：windtrace",
@@ -1021,6 +1022,7 @@ const adapter = new class QQBotAdapter {
         return {
             ...this.pickFriend(id, user_id),
             ...i,
+            getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
         }
     }
 
@@ -1167,6 +1169,22 @@ const adapter = new class QQBotAdapter {
         data.atall = data.mentions.some(m => m.scope === 'all')
         data.atme = !!atUser?.is_you
         data.atbot = !!atUser?.bot
+
+        if (!config.bot_openid[data.self_id]) {
+            let me = data.mentions.find(m => m.is_you)
+            if(me?.member_openid){
+                config.bot_openid[data.self_id] = me.member_openid
+                await configSave()
+            }
+        }
+
+        if (config.bot_openid[data.self_id]) {
+            data.bot_openid = config.bot_openid[data.self_id] // 每次都获取bot信息太费时间，将openid留下，需要直接查询
+            /*let botinfo = await data.bot.sdk.getGroupMemberInfo(data.group_id.split(this.sep)[1], config.bot_openid[data.self_id])
+            if (botinfo) {
+                data.bot_info = botinfo
+            }*/
+        }
 
         data.platform = 'QQ-group'
 
