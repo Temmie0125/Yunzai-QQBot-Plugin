@@ -214,6 +214,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
   await e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo() //获取指定群指定用户信息
   如果需要获取自己bot信息，可以使用
   await e.group.pickMember(e.bot_opneid).getGroupMemberInfo() //获取当前bot信息e.bot_openid为当前bot的openid当在全量群艾特机器人后会自动记录，请在使用前自行确保e.bot_openid存在
+  或使用await e.getBotInfo()获取bot信息,仍然需要在记录bot的openid后使用
 ```
 
 - 本接口返回信息是已经经过处理过的，并非官方返回的原始结构，大致结构如下：

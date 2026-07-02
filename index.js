@@ -1179,12 +1179,16 @@ const adapter = new class QQBotAdapter {
         }
 
         if (config.bot_openid[data.self_id]) {
-            data.bot_openid = config.bot_openid[data.self_id] // 每次都获取bot信息太费时间，将openid留下，需要直接查询
-            /*let botinfo = await data.bot.sdk.getGroupMemberInfo(data.group_id.split(this.sep)[1], config.bot_openid[data.self_id])
-            if (botinfo) {
-                data.bot_info = botinfo
-            }*/
+            data.bot_openid = config.bot_openid[data.self_id]
         }
+        data.getBotInfo = config.bot_openid[data.self_id] 
+            ? async () => {
+                return await data.bot.sdk.getGroupMemberInfo(data.group_id.split(this.sep)[1], config.bot_openid[data.self_id]) 
+            }
+            : async () => {
+                logger.error('当前未记录bot的openid，在全量群艾特机器人后会自动记录')
+                return {}
+            }
 
         data.platform = 'QQ-group'
 
