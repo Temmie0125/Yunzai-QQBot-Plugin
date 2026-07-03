@@ -204,7 +204,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
-<details><summary>获取群成员信息</summary>
+<details><summary>主动获取群成员信息(悲报此接口权限仅开放了一天半就被拿下了，暂时无使用权限)</summary>
 
 - 在插件中，可以通过以下几种方式获取指定用户信息
 
