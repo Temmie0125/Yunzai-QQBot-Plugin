@@ -1164,7 +1164,7 @@ const adapter = new class QQBotAdapter {
 
         const atUser = data.mentions.find(m => !m.bot) ?? data.mentions.at(-1) ?? null;
 
-        data.at = atUser?.member_openid ? `${data.self_id}${this.sep}${atUser.member_openid}` : null;
+        data.at = atUser?.member_openid && !atUser?.is_you ? `${data.self_id}${this.sep}${atUser.member_openid}` : null;
 
         data.atall = data.mentions.some(m => m.scope === 'all')
         data.atme = !!atUser?.is_you
