@@ -1381,6 +1381,27 @@ const adapter = new class QQBotAdapter {
 
         if (event.data.type === 2002 || event.data.type === 2001) return
 
+        // 私信主动推送
+        if(event.data?.resolved?.authorize_data?.opt_scene === 'setting' && event.data?.resolved?.authorize_data?.scope === 'c2c_push') {
+            const user_id = `${id}${this.sep}${event.operator_id}`
+            let user = await Bot[id].fl.get(user_id)
+            const enabled = !!event.data?.resolved?.authorize_data?.switch
+            logger.info(`[U:${user?.nickname || ''}(${user_id})]${enabled ? '开启' : '关闭'}私信主动推送`)
+            if(!Bot.disablePushUsers.get(id)){
+                Bot.disablePushUsers.set(id, new Set())
+            }
+            if (enabled) {
+                // 开启：从关闭列表中移除
+                Bot.disablePushUsers.get(id)?.delete(user_id)
+                await redis.sRem(`wind-disable-push-users:${id}`, user_id)
+            } else {
+                // 关闭：记录进内存 Map 与 redis
+                Bot.disablePushUsers.get(id)?.add(user_id)
+                await redis.sAdd(`wind-disable-push-users:${id}`, user_id)
+            }
+            return
+        }
+
         let user = await Bot[id].fl.get(`${id}${this.sep}${event.operator_id}`)
 
         const data = {
@@ -1680,6 +1701,24 @@ const adapter = new class QQBotAdapter {
         req.res.sendStatus(200)
     }
 
+    async initDisablePushUsers(){
+        if (Bot.disablePushUsers) return
+        Bot.disablePushUsers = Bot.disablePushUsers || new Map()
+        try {
+            const cachedKeys = await redis.keys('wind-disable-push-users:*')
+            for (const key of cachedKeys) {
+            const qq = key.split(':')[1]
+            const users = await redis.sMembers(key)
+                if (users.length) {
+                    try { Bot.disablePushUsers.set(qq, new Set(users)) } catch {}
+                }
+            }
+            if (Bot.disablePushUsers.size) {
+                logger.info(logger.green(`已从 Redis 加载 ${Bot.disablePushUsers.size} 个关闭推送的用户缓存信息`))
+            }
+        } catch {}
+    }
+
     async load() {
         Bot.express.use(`/${this.name}`, this.makeWebHook.bind(this))
         Bot.express.quiet.push(`/${this.name}`)
@@ -1687,6 +1726,8 @@ const adapter = new class QQBotAdapter {
             await Bot.sleep(5000, this.connect(token))
 
         await initGroupInfoMap()
+
+        await this.initDisablePushUsers()
 
         // 无 token 时自动启动扫码登录
         if (!config.token.length) {
@@ -1870,8 +1911,42 @@ export class QQBotAdapter extends plugin {
                     fnc: 'qrlogin',
                     permission: 'master',
                 },
+                {
+                    reg: '^#关闭推送用户(列表)?$',
+                    fnc: 'disablepushusers',
+                    permission: 'master',
+                }
             ]
         })
+    }
+    formatUserList(set, max = MAX) {
+        const list = Array.from(set)
+        const total = list.length
+
+        if (total <= max) {
+            return {
+                text: list.map(item => item.slice(11,16)+'***'+item.slice(-5)).join('\r'),
+                total
+            }
+        }
+
+        return {
+            text: list.map(item => item.slice(11,16)+'***'+item.slice(-5)).slice(0, max).join('\r'),
+            total
+        }
+    }
+    async disablepushusers(e){
+        if (e.adapter_id !== 'QQBot') return true
+        const users = Bot.disablePushUsers.get(e.self_id) || new Set()
+        if (!users.size) {
+            return this.reply('当前机器人暂无关闭推送的用户')
+        }
+        const { text, total } = this.formatUserList(users, MAX)
+        return this.reply(
+            `***${Bot[selfId].nickname}***：共\`${total}个\`关闭推送的用户\r` +
+            (total > 100 ? '（仅展示前 100 个）' : '') +
+            `\r\`\`\`users\r${text}\r\`\`\``
+        )
     }
     async turn_filter_onlyother_bot(e){
         if(e.msg.includes('开启')){
