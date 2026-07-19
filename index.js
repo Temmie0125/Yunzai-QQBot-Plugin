@@ -62,6 +62,7 @@ import { msgSequelize } from './model/init.js'
 import MessageDB from './model/MessageDB.js'
 import MsgIdxDB from './model/MsgIdxDB.js'
 import ActiveListDB from './model/ActiveListDB.js'
+import PinDB from './model/PinDB.js'
 
 await msgSequelize.sync()
 
@@ -78,6 +79,7 @@ await loadBlacklist()
 Bot.MessageDB = MessageDB
 Bot.MsgIdxDB = MsgIdxDB
 Bot.ActiveListDB = ActiveListDB
+Bot.PinDB = PinDB
 const adapter = new class QQBotAdapter {
     constructor() {
         this.id = "QQBot"
