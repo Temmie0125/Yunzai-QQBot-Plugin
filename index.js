@@ -1845,7 +1845,7 @@ export class QQBotAdapter extends plugin {
                     permission: config.permission,
                 },
                 {
-                    reg: "^#[Qq]+[Bb]ot设置[0-9]+:[0-9]+:.+:.+:([01]:[01]|2)$",
+                    reg: "^#[Qq]+[Bb]ot设置[0-9]+:[0-9]+:.+:(.:2|.:[01]:[01]|[01]:[01]|2)$",
                     fnc: "Token",
                     permission: config.permission,
                 },
@@ -2010,7 +2010,14 @@ export class QQBotAdapter extends plugin {
     }
 
     async Token() {
-        const token = this.e.msg.replace(/^#[Qq]+[Bb]ot设置/, "").trim()
+        let token = this.e.msg.replace(/^#[Qq]+[Bb]ot设置/, "").trim()
+        let bot = token.split(':')
+        if(bot.length === 4 && Number(bot[3]) === 2){
+            token = bot[0] + ':' + bot[1] + ':' + 'default占位' + ':' + bot[2] + ':' + bot[3]
+        } else if(bot.length === 5 && Number(bot[4]) !== 2) {
+            token = bot[0] + ':' + bot[1] + ':' + 'default占位' +':' + bot[2] + ':' + bot[3] + ':' + bot[4]
+        }
+        logger.info(token)
         if (config.token.includes(token)) {
             config.token = config.token.filter(item => item !== token)
             this.reply(`账号已删除，重启后生效，共${config.token.length}个账号`, true)

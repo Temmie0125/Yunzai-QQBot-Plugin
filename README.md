@@ -28,6 +28,12 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 #QQBot设置114:514:1919:810:1:1
 ```
 
+- 新版：机器人QQ号 `114` AppID `514` AppSecret `810` 群Bot 频道私域
+
+```
+#QQBot设置114:514:810:1:1
+```
+
 - WebHook
 
 ```
@@ -40,6 +46,7 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 
 - #QQBot账号
 - #QQBot设置 + `机器人QQ号:AppID:Token:AppSecret:是否群Bot:是否频道私域`（是1 否0）
+- #QQBot设置 + `机器人QQ号:AppID:AppSecret:是否群Bot:是否频道私域`（是1 否0）(新版不需要token，但是需要兼容旧版本)
 - #QQBotMD + `机器人QQ号:raw`（默认状态就会在QQ群和私信使用原生markdown，如果手动设置raw频道也会使用原生发送，但是频道需要原生MD权限）
 - #QQBotMD + `机器人QQ号:legacy`（默认状态就会在QQ群和私信使用原生markdown，如果手动设置legacy群聊会使用普通消息发送）
 - #QQBotMD + `机器人QQ号:模板id:模板参数内容`（需要申请MD模板，模板参数内容用,隔开）
