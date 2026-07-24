@@ -241,6 +241,31 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
+<details><summary>新增接口</summary>
+
+- 群信息接口，可通过以下方式获取群信息`e.group.getGroupInfo()`、`e.bot.pickGroup(group_id).getGroupInfo()`
+
+- 群bot状态接口，可通过以下方式获取群bot状态`e.group.getGroupBotInfo()`、`e.bot.pickGroup(group_id).getGroupBotInfo()`
+
+- 群成员信息接口，可通过以下方式获取群成员信息`e.member.getGroupMemberInfo()`、`e.group.pickMember(user_id).getGroupMemberInfo()`、`e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo()`
+
+</details>
+
+<details><summary>发送msg_type=8的卡片</summary>
+
+- 在插件中可以使用以下方式发送msg_type=8的卡片
+
+```
+segment.custom('card',{
+  description:'xxx',
+  pic_url: 'xxx',
+  title: 'xxx',
+  url: 'xxx'
+})
+```
+
+</details>
+
 ## 问题反馈
 
 - [🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)反馈

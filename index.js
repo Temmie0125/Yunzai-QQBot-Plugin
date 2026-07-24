@@ -394,6 +394,20 @@ const adapter = new class QQBotAdapter {
                 case "small":
                     data.smallbtn = true
                     continue
+                case "card":
+                    messages.push({
+                        type:'card',
+                        data:{
+                            type: 'tuwen',
+                            content:{
+                                description: i.description || i.data?.description,
+                                pic_url: i.pic_url || i.data?.pic_url,
+                                title: i.title || i.data?.title,
+                                url: i.url || i.data?.title
+                            }
+                        }
+                    })
+                    break
                 default:
                     content += await this.makeRawMarkdownText(data, Bot.String(i), button)
             }
@@ -612,6 +626,20 @@ const adapter = new class QQBotAdapter {
                 case "small":
                     data.smallbtn = true
                     continue
+                case "card":
+                    messages.push({
+                        type:'card',
+                        data:{
+                            type: 'tuwen',
+                            content:{
+                                description: i.description || i.data?.description,
+                                pic_url: i.pic_url || i.data?.pic_url,
+                                title: i.title || i.data?.title,
+                                url: i.url || i.data?.title
+                            }
+                        }
+                    })
+                    break
                 default: {
                     const [text, temp] = this.makeMarkdownText(data, Bot.String(i), content, button)
                     if (Array.isArray(temp)) {
@@ -724,6 +752,20 @@ const adapter = new class QQBotAdapter {
                     data.stream = true
                     data.chunkSize = i.data?.chunkSize ?? config.chunkSize
                     data.delay = i.data?.delay ?? config.delay
+                    break
+                case "card":
+                    messages.push({
+                        type:'card',
+                        data:{
+                            type: 'tuwen',
+                            content:{
+                                description: i.description || i.data?.description,
+                                pic_url: i.pic_url || i.data?.pic_url,
+                                title: i.title || i.data?.title,
+                                url: i.url || i.data?.title
+                            }
+                        }
+                    })
                     break
                 default:
                     i = { type: "text", text: Bot.String(i) }
@@ -872,6 +914,20 @@ const adapter = new class QQBotAdapter {
                         continue
                     }
                     i = i.data
+                    break
+                case "card":
+                    messages.push({
+                        type:'card',
+                        data:{
+                            type: 'tuwen',
+                            content:{
+                                description: i.description || i.data?.description,
+                                pic_url: i.pic_url || i.data?.pic_url,
+                                title: i.title || i.data?.title,
+                                url: i.url || i.data?.title
+                            }
+                        }
+                    })
                     break
                 default:
                     i = { type: "text", text: Bot.String(i) }
@@ -1046,6 +1102,8 @@ const adapter = new class QQBotAdapter {
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
+            getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
+            getGroupBotInfo: () => i.bot.sdk.getGroupBotInfo(i.group_id)
         }
     }
 
