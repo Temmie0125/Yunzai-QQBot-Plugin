@@ -249,6 +249,10 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 群成员信息接口，可通过以下方式获取群成员信息`e.member.getGroupMemberInfo()`、`e.group.pickMember(user_id).getGroupMemberInfo()`、`e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo()`
 
+- 群成员列表接口，可通过以下方式获取群成员列表`e.group.getGroupMemberList()`、`e.bot.pickGroup(group_id).getGroupMemberList()`
+
+- 群内禁言接口，可通过以下方式对指定群成员禁言`e.member.muteGroupMember(seconds,end_time)`、`e.group.muteGroupMember(user_id,seconds,end_time)`、`e.bot.pickGroup(group_id).muteGroupMember(user_id,seconds,end_time)`这里的seconds为禁言时、end_time为禁言到期时间戳，可不填，不填则为默认禁言120s，end_time优先级大于seconds
+
 </details>
 
 <details><summary>发送msg_type=8的卡片</summary>

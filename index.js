@@ -1080,7 +1080,16 @@ const adapter = new class QQBotAdapter {
         return {
             ...this.pickFriend(id, user_id),
             ...i,
-            getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
+            getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
+            kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
+            muteGroupMember: (seconds, end_time) => {
+                if (seconds === undefined && end_time === undefined) {
+                    seconds = 120;
+                    end_time = Math.floor(Date.now() / 1000) + 120;
+                }
+                if (seconds === undefined) seconds = 120
+                return i.bot.sdk.muteGroupMember(i.group_id, i.user_id, seconds, end_time);
+            }
         }
     }
 
@@ -1102,8 +1111,19 @@ const adapter = new class QQBotAdapter {
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
+            getGroupMemberList: ()=> i.bot.sdk.getGroupMemberList(i.group_id),
+            getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
-            getGroupBotInfo: () => i.bot.sdk.getGroupBotInfo(i.group_id)
+            getBotStatus: () => i.bot.sdk.getGroupInfo(i.group_id),
+            kickGroupMember: user_id => i.bot.sdk.kickGroupMember(i.group_id, user_id),
+            muteGroupMember: (user_id, seconds, end_time) => {
+                if (seconds === undefined && end_time === undefined) {
+                    seconds = 120;
+                    end_time = Math.floor(Date.now() / 1000) + 120;
+                }
+                if (seconds === undefined) seconds = 120
+                return i.bot.sdk.muteGroupMember(i.group_id, user_id, seconds, end_time);
+            }
         }
     }
 
