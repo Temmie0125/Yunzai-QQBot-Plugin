@@ -1408,7 +1408,8 @@ const adapter = new class QQBotAdapter {
         for (const i of data.message) switch (i.type) {
             case "at":
                 if (data.message_type === "group")
-                    i.qq = `${data.self_id}${this.sep}${i.user_id}`
+                    if(i.is_you) i.qq = id
+                    else i.qq = `${data.self_id}${this.sep}${i.user_id}`
                 else
                     i.qq = `qg_${i.user_id}`
                 break
