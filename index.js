@@ -1248,7 +1248,7 @@ const adapter = new class QQBotAdapter {
 
         data.atall = data.mentions.some(m => m.scope === 'all')
         data.atme = !!atUser?.is_you
-        data.atbot = !!atUser?.bot
+        data.atBot = !!atUser?.bot
 
         if (!config.bot_openid[data.self_id]) {
             let me = data.mentions.find(m => m.is_you)
@@ -1434,15 +1434,19 @@ const adapter = new class QQBotAdapter {
         }
 
         if (Bot.autoRecordMessage === true) saveMessage(data)
-        if(event.author?.bot && config.filter_bot_msg) {
-            logger.debug(`过滤bot信息,event:${JSON.stringify(event,null,2)}`)
-            return true
-        }
-        if(data.mentions && config.filter_only_at_other_bot){
-            if (data.atbot && !data.atme) {
+        if (data.mentions){
+            if (data.atall) {
+                logger.debug(`过滤纯艾特全体成员的信息,event:${JSON.stringify(event,null,2)}`)
+                return true
+            }
+            if (data.atbot && !data.atme && config.filter_only_at_other_bot) {
                 logger.debug(`过滤纯艾特其他bot信息,event:${JSON.stringify(event,null,2)}`)
                 return true
             }
+        }
+        if (event.author?.bot && config.filter_bot_msg) {
+            logger.debug(`过滤bot信息,event:${JSON.stringify(event,null,2)}`)
+            return true
         }
 
         // 黑名单拦截（在 Bot.em 下发事件前）
