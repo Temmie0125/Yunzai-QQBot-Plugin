@@ -1440,7 +1440,7 @@ const adapter = new class QQBotAdapter {
                 logger.debug(`过滤纯艾特全体成员的信息,event:${JSON.stringify(event,null,2)}`)
                 return true
             }
-            if (data.atbot && !data.atme && config.filter_only_at_other_bot) {
+            if (data.atBot && !data.atme && config.filter_only_at_other_bot) {
                 logger.debug(`过滤纯艾特其他bot信息,event:${JSON.stringify(event,null,2)}`)
                 return true
             }
