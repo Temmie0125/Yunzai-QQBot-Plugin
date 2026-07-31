@@ -8,7 +8,6 @@
 //   - pluginName : 插件名
 //   - pluginDir  : 插件目录绝对路径
 //   - logger     : 日志对象
-import fs from "node:fs"
 import path from "node:path"
 
 // 不在页面展示的字段（含敏感信息或无需 Web 设置的）

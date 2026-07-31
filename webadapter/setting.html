@@ -267,7 +267,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        const API = location.pathname.replace(/\/web\/.*$/, "") + "/web/api/qqbot-config"
+        const API = "/" + (location.pathname.split("/")[1] || "qqbot-web") + "/api/qqbot-config"
         let state = null
         let botQQList = []
 
