@@ -46,6 +46,9 @@ const { config, configSave } = await makeConfig("QQBot", {
     ],
 })
 
+// 暴露配置给 webadapter 操作模块，使其可在 Web 控制台读写（与 master 配置同一实例）
+Bot.QQBotConfig = { config, configSave }
+
 let sharp
 if (config.imageLength) try {
     sharp = (await import("sharp")).default
