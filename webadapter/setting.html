@@ -267,7 +267,9 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        const API = "/" + (location.pathname.split("/")[1] || "qqbot-web") + "/api/qqbot-config"
+        const WEB_BASE = new URLSearchParams(location.search).get("__webBase")
+        const API = WEB_BASE + "/api/qqbot-config"
+        console.log(API)
         let state = null
         let botQQList = []
 
