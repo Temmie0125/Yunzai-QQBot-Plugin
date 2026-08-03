@@ -270,6 +270,11 @@ segment.custom('card',{
 
 </details>
 
+## 其他
+
+- 当前可以配合[🔗qqbot-web-adapter插件](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)直接在网页端进行编辑设置以及添加新bot,具体参考下图
+![alt text](./webadapter/webadapter.png)
+
 ## 问题反馈
 
 - [🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)反馈
