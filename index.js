@@ -856,14 +856,14 @@ const adapter = new class QQBotAdapter {
     sendFriendMsg(data, msg, event) {
         if(data.smallbtn) event.smallbtn = true
         return this.sendMsg(data, msg => {
-            if(data.smallbtn) event.smallbtn = true
+            if(data?.smallbtn) event.smallbtn = true
             return data.bot.sdk.sendPrivateMessage(data.user_id, msg, event,{ stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
         }, msg)
     }
 
     sendGroupMsg(data, msg, event) {
         return this.sendMsg(data, msg => {
-            if(data.smallbtn) event.smallbtn = true
+            if(data?.smallbtn) event.smallbtn = true
             return data.bot.sdk.sendGroupMessage(data.group_id, msg, event)
         }, msg)
     }
