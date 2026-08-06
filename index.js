@@ -33,6 +33,7 @@ const { config, configSave } = await makeConfig("QQBot", {
         template: {},
     },
     bot: {
+        newapi: true,
         sandbox: false,
         maxRetry: Infinity,
         timeout: 30000,
@@ -2003,9 +2004,52 @@ export class QQBotAdapter extends plugin {
                     reg: '^#关闭推送用户(列表)?$',
                     fnc: 'disablepushusers',
                     permission: 'master',
+                },
+                {
+                    reg: "^#[Qq]+[Bb]ot(确认)?切换api$",
+                    fnc: 'turn_api',
+                    permission: 'master',
                 }
             ]
         })
+    }
+
+    async turn_api(e){
+        if(config.bot.sandbox) return this.reply('当前为沙箱环境，无法切换api')
+        if(e.msg.includes('确认')){
+            switch(e.bot.sdk.request.defaults.baseURL){
+                case 'https://api.sgroup.qq.com':{
+                    config.bot.newapi = true
+                    await configSave()
+                    break;
+                }
+                case 'https://api.bot.qq.com':{
+                    config.bot.newapi = false
+                    await configSave()
+                    break;
+                }
+                default:{
+                    return this.reply(['api切换失败，请重启机器人再做尝试', segment.button([{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
+                }
+            }
+            this.reply('api切换成功,请等待重启')
+            return await Bot.restart()
+        } else {
+            switch(e.bot.sdk.request.defaults.baseURL){
+                case 'https://api.sgroup.qq.com':{
+                    if(config.bot.newapi) return this.reply(['当前为旧api环境`https://api.sgroup.qq.com`，但未机器人设置尚未切换，仅需手动重启即可，若是**确认切换api**，将会将设置切换到使用旧的api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}],[{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
+                    else return this.reply(['当前为旧api环境`https://api.sgroup.qq.com`，是否确认**确认切换api**至新api', segment.button([{text:'#QQBot确认切换api',callback:'#QQBot确认切换api'}])])
+                }
+                case 'https://api.bot.qq.com':{
+                    if(!config.bot.newapi)  return this.reply(['当前为新api环境`https://api.bot.qq.com`，但未机器人设置尚未切换，仅需手动重启即可，若是**确认切换api**，将会将设置切换到使用新的api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}],[{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
+                    else return this.reply(['当前为新api环境`https://api.bot.qq.com`，是否确认**确认切换api**至旧api', segment.button([{text:'#QQBot确认切换api',callback:'#QQBot确认切换api'}])])
+                }
+                default:{
+                    return this.reply(['api切换失败，请重启机器人再做尝试', segment.button([{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
+                }
+            }
+        }
+        
     }
     formatUserList(set, max = MAX) {
         const list = Array.from(set)

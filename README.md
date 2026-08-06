@@ -53,6 +53,7 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 - #rawButton + `机器人QQ号:true或false`（如果有原生按钮权限则设置true，如果没有则不用设置，默认为true使用原生按钮）
 - `#开启bot消息过滤`/`#关闭bot消息过滤` 可以开关过滤，以免官机之间相互触发
 - `#开启纯at其他bot过滤`/`#关闭纯at其他bot过滤` 可以开关只艾特了其他官机的消息的过滤，以免在使用其他机器人时触发
+- `#QQBot切换api` 可以切换使用的QQBot api，根据提示可自由切换新旧api
 
 ## 与原版区别
 
@@ -267,6 +268,12 @@ segment.custom('card',{
   url: 'xxx'
 })
 ```
+
+</details>
+
+<details><summary>支持QQBot api自由切换</summary>
+
+- 目前QQBot支持两个api使用新api:`https://api.bot.qq.com`和旧api:`https://api.sgroup.qq.com`，可使用`#QQBot切换api`并根据提示切换使用的api，当然这两个api仅在非沙箱环境下可用，沙箱环境下只使用旧api`https://sandbox.api.sgroup.qq.com`
 
 </details>
 

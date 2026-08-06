@@ -23,6 +23,7 @@ const BOOLEAN_FIELDS = [
   { key: "filter_bot_msg", label: "过滤机器人消息", desc: "忽略来自 bot 的消息" },
   { key: "filter_only_at_other_bot", label: "过滤纯艾特其他机器人", desc: "只艾特其他 bot 时过滤" },
   { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境" },
+  { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）" },
 ]
 
 // 全局数字字段
@@ -74,7 +75,7 @@ export function init(ctx) {
         const { config } = getCfg()
         const bools = {}
         for (const f of BOOLEAN_FIELDS) {
-          if (f.key === "sandbox") bools[f.key] = !!config.bot?.sandbox
+          if (f.key === "sandbox" || f.key === "newapi") bools[f.key] = !!config.bot?.[f.key]
           else bools[f.key] = !!config[f.key]
         }
         const numbers = {}
@@ -100,6 +101,7 @@ export function init(ctx) {
           bools,
           maps,
           numbers,
+          sandboxOn: !!config.bot?.sandbox,
           markdownBatchSize: typeof md.batchSize === "number" ? md.batchSize : 5,
           botQQList: botQQList(),
         })
@@ -118,9 +120,9 @@ export function init(ctx) {
         if (body.bools) {
           for (const f of BOOLEAN_FIELDS) {
             if (typeof body.bools[f.key] === "boolean") {
-              if (f.key === "sandbox") {
+              if (f.key === "sandbox" || f.key === "newapi") {
                 config.bot = config.bot || {}
-                config.bot.sandbox = body.bools[f.key]
+                config.bot[f.key] = body.bools[f.key]
               } else {
                 config[f.key] = body.bools[f.key]
               }
@@ -159,6 +161,18 @@ export function init(ctx) {
         }
 
         configSave()
+        res.json({ ok: true })
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // 重启 Bot
+    ctx.registerApi("post", "/qqbot-restart", (_req, res) => {
+      try {
+        if (typeof Bot.restart !== "function") throw new Error("当前环境不支持重启")
+        // 延迟一点再重启，确保响应先返回前端
+        setTimeout(() => { Bot.restart() }, 300)
         res.json({ ok: true })
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message })

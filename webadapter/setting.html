@@ -49,6 +49,14 @@
         .save-btn:hover { background: var(--accent-hover); }
         .save-btn:disabled { opacity: .5; cursor: default; }
 
+        .topbar-actions { display: flex; align-items: center; gap: 10px; }
+        .restart-btn {
+            height: 34px; padding: 0 18px; border: 1px solid var(--danger); border-radius: 8px;
+            background: var(--danger); color: #fff; font-size: 14px; cursor: pointer; transition: opacity .15s;
+        }
+        .restart-btn:hover { opacity: .85; }
+        .restart-btn:disabled { opacity: .5; cursor: default; }
+
         .content { padding: 16px 18px 60px; max-width: 860px; margin: 0 auto; width: 100%; }
 
         .section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
@@ -63,6 +71,7 @@
         .bool-info { flex: 1; min-width: 0; padding-right: 12px; }
         .bool-info .name { font-size: 14px; }
         .bool-info .desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .bool-hint { font-size: 12px; color: #c8741a; margin-top: 4px; }
 
         /* 胶囊开关 */
         .pill-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: 0 0 auto; }
@@ -258,7 +267,10 @@
     <div class="app">
         <div class="topbar">
             <h1>QQBot 设置</h1>
-            <button class="save-btn" id="saveBtn" disabled>保存</button>
+            <div class="topbar-actions">
+                <button class="restart-btn" id="restartBtn">重启 Bot</button>
+                <button class="save-btn" id="saveBtn" disabled>保存</button>
+            </div>
         </div>
         <div class="content" id="content">
             <div class="loading">加载中…</div>
@@ -291,8 +303,11 @@
             { key: "fakemsg", label: "野收官发", desc: "野收官发全局开关，配合野收官发插件使用" },
             { key: "filter_bot_msg", label: "过滤机器人消息", desc: "忽略来自 bot 的消息" },
             { key: "filter_only_at_other_bot", label: "过滤纯艾特其他机器人", desc: "只艾特其他 bot 时过滤" },
-            { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境" },
+            { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境（需重启后生效）" },
+            { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）" },
         ]
+        // 依赖沙箱状态显示提示的字段（使用沙箱时此选项不起作用）
+        const SANDBOX_DEPENDENT = new Set(["newapi"])
         const NUMBER_META = [
             { key: "imageLength", label: "图片压缩阈值", desc: "超过此大小(MB)的图片将自动压缩", default: 3 },
             { key: "chunkSize", label: "流式分块大小", desc: "流式消息每块显示的字数", default: 2 },
@@ -316,8 +331,12 @@
             // boolean 区
             html += `<div class="section"><h2>基础设置</h2>`
             for (const f of BOOLEAN_META) {
-                html += `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div></div>
-                    <label class="pill-switch"><input type="checkbox" data-bool="${f.key}" ${state.bools[f.key] ? "checked" : ""}><span class="slider"></span></label></div>`
+                const checked = state.bools[f.key] ? "checked" : ""
+                const hint = SANDBOX_DEPENDENT.has(f.key) && state.sandboxOn
+                    ? `<div class="bool-hint" data-sandboxhint="${f.key}">注意：使用沙箱时此选项不起作用</div>`
+                    : ""
+                html += `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div>${hint}</div>
+                    <label class="pill-switch"><input type="checkbox" data-bool="${f.key}" ${checked}><span class="slider"></span></label></div>`
             }
             // 数字字段
             for (const f of NUMBER_META) {
@@ -571,7 +590,27 @@
         function bindEvents() {
             // boolean 开关
             document.querySelectorAll("[data-bool]").forEach(el => {
-                el.addEventListener("change", () => { state.bools[el.dataset.bool] = el.checked })
+                el.addEventListener("change", () => {
+                    const key = el.dataset.bool
+                    state.bools[key] = el.checked
+                    // 沙箱状态变化时，刷新依赖沙箱的提示
+                    if (key === "sandbox") {
+                        state.sandboxOn = el.checked
+                        document.querySelectorAll("[data-sandboxhint]").forEach(h => h.remove())
+                        for (const fk of SANDBOX_DEPENDENT) {
+                            if (state.sandboxOn) {
+                                const row = document.querySelector(`[data-bool="${fk}"]`).closest(".bool-row").querySelector(".bool-info")
+                                if (row && !row.querySelector("[data-sandboxhint]")) {
+                                    const d = document.createElement("div")
+                                    d.className = "bool-hint"
+                                    d.dataset.sandboxhint = fk
+                                    d.textContent = "注意：使用沙箱时此选项不起作用"
+                                    row.appendChild(d)
+                                }
+                            }
+                        }
+                    }
+                })
             })
             // 数字字段
             document.querySelectorAll("[data-num]").forEach(el => {
@@ -739,7 +778,7 @@
                 const r = await fetch(API)
                 const d = await r.json()
                 if (!d.ok) throw new Error(d.error || "加载失败")
-                state = { bools: d.bools || {}, maps: d.maps || {}, numbers: d.numbers || {} }
+                state = { bools: d.bools || {}, maps: d.maps || {}, numbers: d.numbers || {}, sandboxOn: !!d.sandboxOn }
                 botQQList = d.botQQList || []
                 render()
                 document.getElementById("saveBtn").disabled = false
@@ -763,6 +802,21 @@
             } catch (e) {
                 toast("保存失败：" + e.message)
             } finally {
+                btn.disabled = false
+            }
+        })
+
+        document.getElementById("restartBtn").addEventListener("click", async () => {
+            if (!confirm("是否确认重启 Bot？")) return
+            const btn = document.getElementById("restartBtn")
+            btn.disabled = true
+            try {
+                const r = await fetch(WEB_BASE + "/api/qqbot-restart", { method: "POST" })
+                const d = await r.json()
+                if (!d.ok) throw new Error(d.error || "重启失败")
+                toast("已发送重启指令")
+            } catch (e) {
+                toast("重启失败：" + e.message)
                 btn.disabled = false
             }
         })
