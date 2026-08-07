@@ -1574,8 +1574,8 @@ const adapter = new class QQBotAdapter {
     }
 
     makeNotice(id, event) {
+        let user = Bot[id].fl.get(`${id}${this.sep}${event.operator_id || event.user_id}`)
         let data = {
-            user_id: event.user_id ? id + this.sep + event.user_id : id + this.sep + event.operator_id,
             openid: event.user_id ? event.user_id : event.operator_id,
             avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id ? event.user_id : event.operator_id}/0`,
             event_id: event.event_id,
@@ -1583,6 +1583,20 @@ const adapter = new class QQBotAdapter {
             raw_event: event.raw,
             bot: Bot[id],
             self_id: id,
+            get openid() { return this.sender.openid },
+            get unionid() { return this.sender.unionid },
+            get user_id() { return this.sender.user_id },
+            get nickname() { return this.sender.nickname },
+            get avatar() { return this.sender.avatar },
+            set avatar(newAvatar) {this.sender.avatar=newAvatar},
+            sender: { 
+                user_id: `${id}${this.sep}${event.operator_id || event.user_id}`,
+                bot: event.author?.bot || user?.bot || false,
+                avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.operator_id || event.user_id}/0` || user.avatar || '',
+                unionid: event.union_openid || user?.unionid || '',
+                openid: event.operator_id || event.user_id || user?.openid || '',
+                nickname: event.user_name || user?.nickname || ''
+            },
             post_type: event.post_type,
             notice_type: event.notice_type,
             sub_type: event.sub_type,
@@ -1590,10 +1604,6 @@ const adapter = new class QQBotAdapter {
             platform: 'QQ-notice',
             time: event.timestamp || Math.floor(Date.now() / 1000),
         }
-        
-        const userInfo = Bot[id].fl.get(data.user_id)
-        data.nickname = userInfo?.nickname || data.openid || '未知'
-        data.unionid = userInfo?.unionid || ''
 
         if(data.notice_type === 'friend') {
             data.reply = msg => this.sendFriendMsg({
@@ -1647,6 +1657,10 @@ const adapter = new class QQBotAdapter {
             case "member.increase":
             case "member.decrease":
             case "member.update":
+                break
+            case "request":
+                data.verify_info = event.verify_info
+                data.join_request_id = event.join_request_id
                 break
             default:
                 Bot.makeLog("warn", ["未知通知", event], id)
@@ -2038,11 +2052,11 @@ export class QQBotAdapter extends plugin {
             switch(e.bot.sdk.request.defaults.baseURL){
                 case 'https://api.sgroup.qq.com':{
                     if(config.bot.newapi) return this.reply(['当前为旧api环境`https://api.sgroup.qq.com`，但未机器人设置尚未切换，仅需手动重启即可，若是**确认切换api**，将会将设置切换到使用旧的api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}],[{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
-                    else return this.reply(['当前为旧api环境`https://api.sgroup.qq.com`，是否确认**确认切换api**至新api', segment.button([{text:'#QQBot确认切换api',callback:'#QQBot确认切换api'}])])
+                    else return this.reply(['当前为旧api环境`https://api.sgroup.qq.com`，是否确认**确认切换api**至新api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}])])
                 }
                 case 'https://api.bot.qq.com':{
                     if(!config.bot.newapi)  return this.reply(['当前为新api环境`https://api.bot.qq.com`，但未机器人设置尚未切换，仅需手动重启即可，若是**确认切换api**，将会将设置切换到使用新的api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}],[{text:'#重启',callback:'#重启',content:'是否确认重启'}])])
-                    else return this.reply(['当前为新api环境`https://api.bot.qq.com`，是否确认**确认切换api**至旧api', segment.button([{text:'#QQBot确认切换api',callback:'#QQBot确认切换api'}])])
+                    else return this.reply(['当前为新api环境`https://api.bot.qq.com`，是否确认**确认切换api**至旧api', segment.button([{text:'确认切换api',callback:'#QQBot确认切换api'}])])
                 }
                 default:{
                     return this.reply(['api切换失败，请重启机器人再做尝试', segment.button([{text:'#重启',callback:'#重启',content:'是否确认重启'}])])

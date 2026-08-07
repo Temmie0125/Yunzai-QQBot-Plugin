@@ -113,7 +113,10 @@ user_id仅用:分割，以免数据迁移有问题
 <details><summary>允许插件处理notice事件</summary>
 
 - 例如机器人加入群聊、新增用户，群员增加或减少等，都可自定义回复，参考示例[🔗官机入群发言.js](https://gitee.com/wind-trace-typ/wind-js/blob/master/%E5%AE%98%E6%9C%BA%E5%85%A5%E7%BE%A4%E5%8F%91%E8%A8%80.js)
+
 - 如果机器人被移除报错那是因为plugins/example/进群退群通知.js接收到了官机的退群事件，那么可以修改这里(当然不修改也可以，不影响使用),若是其他插件也有接收进官机退群等事件并响应的可以在对应事件处理位置添加以下判断`if(e.adapter_id==='QQBot') return`，可以参考[🔗官机专用进退群通知.js](https://gitee.com/wind-trace-typ/wind-js/blob/master/%E5%AE%98%E6%9C%BA%E4%B8%93%E7%94%A8%E8%BF%9B%E9%80%80%E7%BE%A4%E9%80%9A%E7%9F%A5.js)编写进退群插件
+
+- 入群申请事件，`notice.group.request`,可以通过`e.verify_info`查看验证信息，`e.join_request_id`拿到申请id
 
 ```
 async accept() {
