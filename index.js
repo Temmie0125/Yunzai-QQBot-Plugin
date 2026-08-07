@@ -1586,6 +1586,7 @@ const adapter = new class QQBotAdapter {
             get openid() { return this.sender.openid },
             get unionid() { return this.sender.unionid },
             get user_id() { return this.sender.user_id },
+            set user_id(newUserId) { this.sender.user_id = newUserId },
             get nickname() { return this.sender.nickname },
             get avatar() { return this.sender.avatar },
             set avatar(newAvatar) {this.sender.avatar=newAvatar},
