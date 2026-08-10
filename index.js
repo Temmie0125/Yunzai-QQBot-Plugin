@@ -1044,6 +1044,21 @@ const adapter = new class QQBotAdapter {
         Bot.makeLog("info", `撤回${hide?"并隐藏":""}频道消息：[${data.channel_id}] ${message_id}`, data.self_id)
         return this.recallMsg(data, i => data.bot.sdk.recallGuildMessage(data.channel_id, i, hide), message_id)
     }
+    
+    rfc3339CN(seconds = 0) {
+        const d = new Date(Date.now() + seconds * 1000);
+
+        const pad = n => n.toString().padStart(2, '0');
+
+        const utc = d.getTime();
+        const cst = new Date(utc + 8 * 60 * 60 * 1000);
+
+        return (
+            `${cst.getUTCFullYear()}-${pad(cst.getUTCMonth() + 1)}-${pad(cst.getUTCDate())}` +
+            `T${pad(cst.getUTCHours())}:${pad(cst.getUTCMinutes())}:${pad(cst.getUTCSeconds())}` +
+            `+08:00`
+        );
+    }
 
     pickFriend(id, user_id) {
         if (typeof user_id !== "string")
