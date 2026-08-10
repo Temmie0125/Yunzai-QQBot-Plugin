@@ -67,7 +67,6 @@ import MessageDB from './model/MessageDB.js'
 import MsgIdxDB from './model/MsgIdxDB.js'
 import ActiveListDB from './model/ActiveListDB.js'
 import PinDB from './model/PinDB.js'
-import { use } from "react"
 
 await msgSequelize.sync()
 
@@ -1242,6 +1241,9 @@ const adapter = new class QQBotAdapter {
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', userlist.map(item => item.replace(`${id}${this.sep}`, "")));
+            },
+            getGroupmuteState: () => {
+                return i.bot.sdk.getGroupmuteState(i.group_id);
             },
             approveRequest:(user_id, join_request_id) => {
                 Bot.makeLog(

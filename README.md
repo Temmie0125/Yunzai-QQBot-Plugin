@@ -295,6 +295,22 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 拒绝入群申请接口，可通过以下方式拒绝入群申请`e.group.declineRequest(userid, join_request_id)`、`e.bot.pickGroup(group_id).declineRequest(userid, join_request_id)`
 
+- 获取群禁言状态接口，可以通过以下方式获取群禁言状态`e.group.getGroupMuteState()`、`e.bot.pickGroup(group_id).getGroupMuteState()`,返回的数据结构如下：
+
+```
+{
+  global_rule: { mode: 'none', schedule_rules: [], recurring_rules: [] },
+  members: [
+    {
+      member_openid: 'xxx',
+      mute_expire_at: '2026-08-11T01:14:29+08:00',
+      username: 'xxx',
+      union_openid: 'xxx'
+    }
+  ]
+}
+```
+
 </details>
 
 <details><summary>发送msg_type=8的卡片</summary>
