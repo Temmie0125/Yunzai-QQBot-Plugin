@@ -255,7 +255,45 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 群成员列表接口，可通过以下方式获取群成员列表`e.group.getGroupMemberList()`、`e.bot.pickGroup(group_id).getGroupMemberList()`
 
-- 群内禁言接口，可通过以下方式对指定群成员禁言`e.member.muteGroupMember(seconds,end_time)`、`e.group.muteGroupMember(user_id,seconds,end_time)`、`e.bot.pickGroup(group_id).muteGroupMember(user_id,seconds,end_time)`这里的seconds为禁言时、end_time为禁言到期时间戳，可不填，不填则为默认禁言120s，end_time优先级大于seconds
+- 群内禁言接口，可通过以下方式对指定群成员禁言`e.member.muteGroupMember(seconds)`、`e.group.muteGroupMember(user_id,seconds)`、`e.bot.pickGroup(group_id).muteGroupMember(user_id,seconds)`或者兼容野鸡的禁言方式`e.member.muteMember(seconds)`、`e.group.muteMember(user_id,seconds)`、`e.bot.pickGroup(group_id).muteMember(user_id,seconds)`这里的seconds为禁言时间，可不填，不填则为默认禁言120s
+
+- 群内解除禁言接口，可通过以下方式对指定群成员禁言`e.member.unmuteGroupMember(seconds)`、`e.group.unmuteGroupMember(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteGroupMember(user_id,seconds)`或者兼容野鸡的禁言方式`e.member.unmuteMember(seconds)`、`e.group.unmuteMember(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteMember(user_id,seconds)`这里的seconds为禁言时间，可不填，不填则为默认禁言120s
+
+- 群内批量禁言接口，可通过以下方式对指定群成员禁言`e.group.muteGroupMembers(user_id_list,seconds)`、`e.bot.pickGroup(group_id).muteGroupMembers(user_id_list,seconds)`这里的user_id_list为禁言用户id数组，seconds为禁言时间，seconds可不填，不填则为默认禁言120s
+
+- 群内解除禁言接口，可通过以下方式对指定群成员禁言`e.member.unmuteGroupMembers(seconds)`、`e.group.unmuteGroupMembers(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteGroupMembers(user_id,seconds)`这里的user_id_list为禁言用户id数组，seconds为禁言时间，可不填，不填则为默认禁言120s
+
+- 获取入群申请列表接口，可通过以下方式获取入群申请列表`e.group.getGroupRequestList()`、`e.bot.pickGroup(group_id).getGroupRequestList()`，返回的数据结构如下：
+
+```
+ [
+  {
+    "join_request_id": "xxxx",
+    "risk_tips": "",
+    "union_openid": "xxxx",
+    "member_openid": "xxx",
+    "username": "xxx",
+    "apply_at": "2026-08-11T00:06:29+08:00",
+    "apply_source": "self_apply",
+    "invited_by": "",
+    "bot": false,
+    "verify_info": {
+      "method": "admin_review_qa",
+      "verify_message": "",
+      "review_qa_list": [
+        {
+          "question": "xxx",
+          "answer": "xxx"
+        }
+      ]
+    }
+  }
+]
+```
+
+- 同意入群申请接口，可通过以下方式同意入群申请`e.group.approveGroupRequest(userid, join_request_id)`、`e.bot.pickGroup(group_id).approveGroupRequest(userid, join_request_id)`
+
+- 拒绝入群申请接口，可通过以下方式拒绝入群申请`e.group.declineRequest(userid, join_request_id)`、`e.bot.pickGroup(group_id).declineRequest(userid, join_request_id)`
 
 </details>
 
