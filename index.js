@@ -67,6 +67,7 @@ import MessageDB from './model/MessageDB.js'
 import MsgIdxDB from './model/MsgIdxDB.js'
 import ActiveListDB from './model/ActiveListDB.js'
 import PinDB from './model/PinDB.js'
+import { use } from "react"
 
 await msgSequelize.sync()
 
@@ -1087,13 +1088,67 @@ const adapter = new class QQBotAdapter {
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
             getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
-            muteGroupMember: (seconds, end_time) => {
-                if (seconds === undefined && end_time === undefined) {
+            muteGroupMember: (seconds) => {
+                Bot.makeLog(
+                    "info",
+                    `禁言群成员：${seconds}秒`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                if (seconds === undefined) {
                     seconds = 120;
-                    end_time = Math.floor(Date.now() / 1000) + 120;
                 }
-                if (seconds === undefined) seconds = 120
-                return i.bot.sdk.muteGroupMember(i.group_id, i.user_id, seconds, end_time);
+                let end_time = this.rfc3339CN(seconds)
+                return i.bot.sdk.muteGroupMember(i.group_id, 'update', [i.user_id], end_time);
+            },
+            unmuteGroupMember: () => {
+                Bot.makeLog(
+                    "info",
+                    `解除群成员禁言：`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                return i.bot.sdk.muteGroupMember(i.group_id, 'del', [i.user_id]);
+            },
+            mute: (seconds) => {
+                Bot.makeLog(
+                    "info",
+                    `禁言群成员：${seconds}秒`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                if (seconds === undefined) {
+                    seconds = 120;
+                }
+                let end_time = this.rfc3339CN(seconds)
+                return i.bot.sdk.muteGroupMember(i.group_id, 'update', [i.user_id], end_time);
+            }, // 同步野鸡方法
+            unmute: () => {
+                Bot.makeLog(
+                    "info",
+                    `解除群成员禁言：`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                return i.bot.sdk.muteGroupMember(i.group_id, 'del', [i.user_id]);
+            }, // 同步野鸡方法
+            approveRequest:(join_request_id) => {
+                Bot.makeLog(
+                    "info",
+                    `同意入群申请：`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, 'approve', join_request_id)
+            },
+            declineRequest:(join_request_id, reject_reason = '',add_to_member_blacklist = false) => {
+                Bot.makeLog(
+                    "info",
+                    `拒绝入群申请：`,
+                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    true,
+                )
+                return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, 'decline', join_request_id,reject_reason, add_to_member_blacklist)
             }
         }
     }
@@ -1119,15 +1174,95 @@ const adapter = new class QQBotAdapter {
             getGroupMemberList: ()=> i.bot.sdk.getGroupMemberList(i.group_id),
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
-            getBotStatus: () => i.bot.sdk.getGroupInfo(i.group_id),
+            getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
+            getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMember: user_id => i.bot.sdk.kickGroupMember(i.group_id, user_id),
-            muteGroupMember: (user_id, seconds, end_time) => {
-                if (seconds === undefined && end_time === undefined) {
+            muteGroupMember: (user_id, seconds) => {
+                Bot.makeLog(
+                    "info",
+                    `禁言群成员：${seconds}秒`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                if (seconds === undefined) {
                     seconds = 120;
-                    end_time = Math.floor(Date.now() / 1000) + 120;
                 }
-                if (seconds === undefined) seconds = 120
-                return i.bot.sdk.muteGroupMember(i.group_id, user_id, seconds, end_time);
+                let end_time = this.rfc3339CN(seconds)
+                return i.bot.sdk.muteGroupMember(i.group_id, 'update', [user_id.replace(`${id}${this.sep}`, "")], end_time);
+            },
+            unmuteGroupMember: (user_id) => {
+                Bot.makeLog(
+                    "info",
+                    `解除群成员禁言：`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                return i.bot.sdk.muteGroupMember(i.group_id, 'del', [user_id.replace(`${id}${this.sep}`, "")]);
+            },
+            muteMember: (user_id, seconds) => {
+                Bot.makeLog(
+                    "info",
+                    `禁言群成员：${seconds}秒`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                if (seconds === undefined) {
+                    seconds = 120;
+                }
+                let end_time = this.rfc3339CN(seconds)
+                return i.bot.sdk.muteGroupMember(i.group_id, 'update', [user_id.replace(`${id}${this.sep}`, "")], end_time);
+            }, // 同步野鸡方法
+            unmuteMember: (user_id) => {
+                Bot.makeLog(
+                    "info",
+                    `解除群成员禁言：`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                return i.bot.sdk.muteGroupMember(i.group_id, 'del', [user_id.replace(`${id}${this.sep}`, "")]);
+            }, // 同步野鸡方法
+            muteGroupMembers: (userlist, seconds) => {
+                Bot.makeLog(
+                    "info",
+                    `禁言群成员：${seconds}秒`,
+                    `${data.self_id} => ${i.group_id}, ${userlist.join("、")}`,
+                    true,
+                )
+                if (seconds === undefined) {
+                    seconds = 120;
+                }
+                let end_time = this.rfc3339CN(seconds)
+                return i.bot.sdk.muteGroupMember(i.group_id, 'update', userlist.map(item => item.replace(`${id}${this.sep}`, "")), end_time);
+            },
+            unmuteGroupMembers: (userlist) => {
+                Bot.makeLog(
+                    "info",
+                    `解除群成员禁言：`,
+                    `${data.self_id} => ${i.group_id}, ${userlist.join("、")}`,
+                    true,
+                )
+                return i.bot.sdk.muteGroupMember(i.group_id, 'del', userlist.map(item => item.replace(`${id}${this.sep}`, "")));
+            },
+            approveRequest:(user_id, join_request_id) => {
+                Bot.makeLog(
+                    "info",
+                    `同意入群申请：`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                return i.bot.sdk.approvalGroupRequest(i.group_id, user_id.replace(`${id}${this.sep}`, ""), 'approve', join_request_id)
+            },
+            declineRequest:(user_id, join_request_id, reject_reason = '',add_to_member_blacklist = false) => {
+                Bot.makeLog(
+                    "info",
+                    `拒绝入群申请：`,
+                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    true,
+                )
+                return i.bot.sdk.approvalGroupRequest(i.group_id, user_id.replace(`${id}${this.sep}`, ""), 'decline', join_request_id,reject_reason, add_to_member_blacklist)
+            },
+            getGroupRequestList:() => {
+                return i.bot.sdk.getGroupRequestList(i.group_id)
             }
         }
     }
@@ -1231,7 +1366,14 @@ const adapter = new class QQBotAdapter {
             role: event.author?.member_role || 'member',
         }
         data.group_id = `${data.self_id}${this.sep}${event.group_id}`
-        Bot.makeLog("info", `群消息：[G:${data.group_id}, U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
+
+        let group_data = await data.bot.gl.get(data.group_id)
+        if (!group_data || !group_data?.group_name) group_data = await data.bot.sdk.getGroupInfo(event.group_id)
+
+        data.group_data = group_data || {}
+        data.group_name = group_data?.group_name || ''
+
+        Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
         for (const item of event.message_scene.ext){
             if (item.startsWith("ref_msg_idx=")) {
@@ -1358,7 +1500,9 @@ const adapter = new class QQBotAdapter {
         if (!data.group_id) return
         await data.bot.gl.set(data.group_id, {
             ...data.bot.gl.get(data.group_id),
+            ...data.group_data,
             group_id: data.group_id,
+            group_name: data.group_name || '',
         })
         let gml = data.bot.gml.get(data.group_id)
         if (!gml) {
