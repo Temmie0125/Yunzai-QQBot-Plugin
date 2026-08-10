@@ -1086,6 +1086,7 @@ const adapter = new class QQBotAdapter {
             ...i,
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
+            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
             muteGroupMember: (seconds, end_time) => {
                 if (seconds === undefined && end_time === undefined) {
                     seconds = 120;
