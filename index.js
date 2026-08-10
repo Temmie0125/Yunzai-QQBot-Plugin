@@ -1091,7 +1091,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `禁言群成员：${seconds}秒`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 if (seconds === undefined) {
@@ -1104,7 +1104,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `解除群成员禁言：`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', [i.user_id]);
@@ -1113,7 +1113,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `禁言群成员：${seconds}秒`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 if (seconds === undefined) {
@@ -1126,7 +1126,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `解除群成员禁言：`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', [i.user_id]);
@@ -1135,7 +1135,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `同意入群申请：`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, 'approve', join_request_id)
@@ -1144,7 +1144,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `拒绝入群申请：`,
-                    `${data.self_id} => ${i.group_id}, ${i.user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
                 return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, 'decline', join_request_id,reject_reason, add_to_member_blacklist)
@@ -1180,7 +1180,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `禁言群成员：${seconds}秒`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 if (seconds === undefined) {
@@ -1193,7 +1193,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `解除群成员禁言：`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', [user_id.replace(`${id}${this.sep}`, "")]);
@@ -1202,7 +1202,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `禁言群成员：${seconds}秒`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 if (seconds === undefined) {
@@ -1215,7 +1215,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `解除群成员禁言：`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', [user_id.replace(`${id}${this.sep}`, "")]);
@@ -1224,7 +1224,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `禁言群成员：${seconds}秒`,
-                    `${data.self_id} => ${i.group_id}, ${userlist.join("、")}`,
+                    `${i.self_id} => ${i.group_id}, ${userlist.join("、")}`,
                     true,
                 )
                 if (seconds === undefined) {
@@ -1237,7 +1237,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `解除群成员禁言：`,
-                    `${data.self_id} => ${i.group_id}, ${userlist.join("、")}`,
+                    `${i.self_id} => ${i.group_id}, ${userlist.join("、")}`,
                     true,
                 )
                 return i.bot.sdk.muteGroupMember(i.group_id, 'del', userlist.map(item => item.replace(`${id}${this.sep}`, "")));
@@ -1249,7 +1249,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `同意入群申请：`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 return i.bot.sdk.approvalGroupRequest(i.group_id, user_id.replace(`${id}${this.sep}`, ""), 'approve', join_request_id)
@@ -1258,7 +1258,7 @@ const adapter = new class QQBotAdapter {
                 Bot.makeLog(
                     "info",
                     `拒绝入群申请：`,
-                    `${data.self_id} => ${i.group_id}, ${user_id}`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
                 return i.bot.sdk.approvalGroupRequest(i.group_id, user_id.replace(`${id}${this.sep}`, ""), 'decline', join_request_id,reject_reason, add_to_member_blacklist)
