@@ -757,6 +757,9 @@ const adapter = new class QQBotAdapter {
                     data.chunkSize = i.data?.chunkSize ?? config.chunkSize
                     data.delay = i.data?.delay ?? config.delay
                     break
+                case "small":
+                    data.smallbtn = true
+                    continue
                 case "card":
                     messages.push({
                         type:'card',
