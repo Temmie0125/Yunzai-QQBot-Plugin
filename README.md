@@ -257,11 +257,11 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 群内禁言接口，可通过以下方式对指定群成员禁言`e.member.muteGroupMember(seconds)`、`e.group.muteGroupMember(user_id,seconds)`、`e.bot.pickGroup(group_id).muteGroupMember(user_id,seconds)`或者兼容野鸡的禁言方式`e.member.muteMember(seconds)`、`e.group.muteMember(user_id,seconds)`、`e.bot.pickGroup(group_id).muteMember(user_id,seconds)`这里的seconds为禁言时间，可不填，不填则为默认禁言120s
 
-- 群内解除禁言接口，可通过以下方式对指定群成员禁言`e.member.unmuteGroupMember(seconds)`、`e.group.unmuteGroupMember(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteGroupMember(user_id,seconds)`或者兼容野鸡的禁言方式`e.member.unmuteMember(seconds)`、`e.group.unmuteMember(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteMember(user_id,seconds)`这里的seconds为禁言时间，可不填，不填则为默认禁言120s
+- 群内解除禁言接口，可通过以下方式对指定群成员禁言`e.group.unmuteGroupMember(user_id)`、`e.bot.pickGroup(group_id).unmuteGroupMember(user_id)`或者兼容野鸡的禁言方式`e.group.unmuteMember(user_id)`、`e.bot.pickGroup(group_id).unmuteMember(user_id)`这里的seconds为禁言时间，可不填，不填则为默认禁言120s
 
 - 群内批量禁言接口，可通过以下方式对指定群成员禁言`e.group.muteGroupMembers(user_id_list,seconds)`、`e.bot.pickGroup(group_id).muteGroupMembers(user_id_list,seconds)`这里的user_id_list为禁言用户id数组，seconds为禁言时间，seconds可不填，不填则为默认禁言120s
 
-- 群内解除禁言接口，可通过以下方式对指定群成员禁言`e.member.unmuteGroupMembers(seconds)`、`e.group.unmuteGroupMembers(user_id,seconds)`、`e.bot.pickGroup(group_id).unmuteGroupMembers(user_id,seconds)`这里的user_id_list为禁言用户id数组，seconds为禁言时间，可不填，不填则为默认禁言120s
+- 群内批量解除禁言接口，可通过以下方式对指定群成员解除禁言`e.group.unmuteGroupMembers(user_id)`、`e.bot.pickGroup(group_id).unmuteGroupMembers(user_id)`这里的user_id_list为禁言用户id数组，seconds为禁言时间，可不填，不填则为默认禁言120s
 
 - 获取入群申请列表接口，可通过以下方式获取入群申请列表`e.group.getGroupRequestList()`、`e.bot.pickGroup(group_id).getGroupRequestList()`，返回的数据结构如下：
 
