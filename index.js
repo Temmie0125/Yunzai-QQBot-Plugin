@@ -6,7 +6,6 @@ import path from "node:path"
 import crypto from 'node:crypto'
 import YAML from "yaml"
 import QRCode from "qrcode"
-import { initGroupInfoMap, fetchGroupInfo } from "./lib/groupInfo.js"
 import { ulid } from "ulid"
 import imageSize from "image-size"
 import urlRegexSafe from "url-regex-safe"
@@ -1994,8 +1993,6 @@ const adapter = new class QQBotAdapter {
         for (const token of config.token)
             await Bot.sleep(5000, this.connect(token))
 
-        await initGroupInfoMap()
-
         await this.initDisablePushUsers()
 
         // 无 token 时自动启动扫码登录
@@ -2456,13 +2453,6 @@ export class QQBotAdapter extends plugin {
             return this.reply(`QQ群号 ${groupQQ} 已被其他群(${conflictGid.slice(0,11)}***)绑定，请检查群号是否正确`)
         }
         await redis.hSet('wind-group-bind', gid, groupQQ)
-        // 异步拉取群信息并缓存
-        fetchGroupInfo(groupQQ, adapter._napcatConfig).then(info => {
-          if (info && Bot.groupInfoMap) {
-            Bot.groupInfoMap.set(groupQQ, info)
-            redis.set(`wind-group-info:${groupQQ}`, JSON.stringify(info))
-          }
-        }).catch(() => {})
         this.reply(`已绑定：当前群 ↔ QQ群 ${groupQQ}`)
     }
 
@@ -2472,12 +2462,6 @@ export class QQBotAdapter extends plugin {
         const existing = await redis.hGet('wind-group-bind', gid)
         if (!existing) return this.reply('当前群尚未绑定QQ群号')
         await redis.hDel('wind-group-bind', gid)
-        // 检查是否还有其他群绑定此QQ群号，无则清除缓存
-        const allBinds = await redis.hGetAll('wind-group-bind')
-        if (!Object.values(allBinds).includes(existing)) {
-          Bot.groupInfoMap?.delete(existing)
-          await redis.del(`wind-group-info:${existing}`)
-        }
         this.reply(`已取消绑定：当前群 ↔ QQ群 ${existing}`)
     }
 
