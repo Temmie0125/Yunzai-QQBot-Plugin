@@ -1824,6 +1824,8 @@ const adapter = new class QQBotAdapter {
             case "member.update":
                 break
             case "request":
+                data.apply_source = event.apply_source
+                data.invited_by = event.invited_by
                 data.verify_info = event.verify_info
                 data.join_request_id = event.join_request_id
                 break
