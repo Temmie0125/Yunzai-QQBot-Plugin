@@ -297,6 +297,8 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 获取群禁言状态接口，可以通过以下方式获取群禁言状态`e.group.getGroupMuteState()`、`e.bot.pickGroup(group_id).getGroupMuteState()`,返回的数据结构如下：
 
+- QQBot自定义菜单、列表相关接口，具体接口参考[menuPanel.js](https://gitee.com/wind-trace-typ/Yunzai/blob/master/lib/plugins/menuPanel.js)，可以使用[QQBot-Web-Adapter](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)来实现可视化的自定义菜单和列表
+
 ```
 {
   global_rule: { mode: 'none', schedule_rules: [], recurring_rules: [] },

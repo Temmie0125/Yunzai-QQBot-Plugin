@@ -45,7 +45,16 @@ const { config, configSave } = await makeConfig("QQBot", {
         "参考：https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin",
     ],
 })
-
+const blacklist = new Set([
+        'event_id', 'raw', 'raw_event', 'bot', 'self_id',
+        'post_type', 'message_type', 'sub_type', 'message_id', 'unionid',
+        'openid', 'user_id', 'nickname', 'avatar', 'message', 'raw_message',
+        'time', 'sender', 'group_id', 'group_data', 'group_name',
+        'msg_elements','reply_user','mentions','at','atall','atme','atBot',
+        'bot_openid','getBotInfo','platform','reply','getGenerateUrl',
+        'adapter_id','adapter_name','msg','logText','isGroup','isPrivate','recall',
+        'isMaster','only_reply_at','runtime','logFnc'
+    ])
 // 暴露配置给 webadapter 操作模块，使其可在 Web 控制台读写（与 master 配置同一实例）
 Bot.QQBotConfig = { config, configSave }
 
@@ -1353,10 +1362,18 @@ const adapter = new class QQBotAdapter {
         Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
         for (const item of event.message_scene.ext){
-            if (item.startsWith("ref_msg_idx=")) {
-                data.ref_msg_idx = item.slice("ref_msg_idx=".length);
-            } else if (item.startsWith("msg_idx=")) {
-                data.msg_idx = item.slice("msg_idx=".length);
+            const eqIndex = item.indexOf('=')
+            if (eqIndex === -1) {
+                logger.info(`${item} 非kv标准跳过`);
+                continue
+            }
+
+            const key = item.slice(0, eqIndex)
+            const value = item.slice(eqIndex + 1)
+            if (blacklist.has(key)) {
+                logger.info(`${item} 由于 ${key} 有风险被过滤`);
+            } else {
+                data[key] = value;
             }
         }
 
@@ -1395,10 +1412,18 @@ const adapter = new class QQBotAdapter {
         Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
         for (const item of event.message_scene.ext){
-            if (item.startsWith("ref_msg_idx=")) {
-                data.ref_msg_idx = item.slice("ref_msg_idx=".length);
-            } else if (item.startsWith("msg_idx=")) {
-                data.msg_idx = item.slice("msg_idx=".length);
+            const eqIndex = item.indexOf('=')
+            if (eqIndex === -1) {
+                logger.info(`${item} 非kv标准跳过`);
+                continue
+            }
+
+            const key = item.slice(0, eqIndex)
+            const value = item.slice(eqIndex + 1)
+            if (blacklist.has(key)) {
+                logger.info(`${item} 由于 ${key} 有风险被过滤`);
+            } else {
+                data[key] = value;
             }
         }
 
