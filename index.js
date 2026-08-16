@@ -2117,9 +2117,20 @@ function _qrDecryptSecret(cipherBase64, keyBase64) {
 }
 
 async function _qrGetRobotUin(appId) {
-    const res = await fetch(`${SHARE_INFO_URL}?bkn=${BKN}&robot_appid=${appId}`)
-    const json = await res.json()
-    return json?.data?.robot_data?.robot_uin
+    try {
+        const res = await fetch(`${SHARE_INFO_URL}?bkn=${BKN}&robot_appid=${appId}`,{
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36'
+            },
+        })
+        const json = await res.json()
+        return json?.data?.robot_data?.robot_uin
+    } catch (err){
+        logger.error(`获取机器人 uin 失败: ${err.message}`)
+        return null
+    }
 }
 
 export class QQBotAdapter extends plugin {
