@@ -1729,8 +1729,15 @@ const adapter = new class QQBotAdapter {
                     user = gml.get(`${id}${this.sep}${event.operator_id}`)
                 }
                 data.sender.role = event.author?.member_role || user?.role || 'member'
+
+                let group_data = await data.bot.gl.get(data.group_id)
+                if (!group_data || !group_data?.group_name) group_data = await data.bot.sdk.getGroupInfo(event.group_id)
+
+                data.group_data = group_data || {}
+                data.group_name = group_data?.group_name || ''
+
                 //await redis.set(`wind-group-event_id:${data.self_id}${this.sep}${event.group_id}`,event.event_id,{ EX:300 })
-                Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_id}, U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
+                Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
 
                 data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
                 await this.setGroupMap(data)
@@ -1762,8 +1769,8 @@ const adapter = new class QQBotAdapter {
         }
     }
 
-    makeNotice(id, event) {
-        let user = Bot[id].fl.get(`${id}${this.sep}${event.operator_id || event.user_id}`)
+    async makeNotice(id, event) {
+        let user = await Bot[id].fl.get(`${id}${this.sep}${event.operator_id || event.user_id}`)
         let data = {
             openid: event.user_id ? event.user_id : event.operator_id,
             avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id ? event.user_id : event.operator_id}/0`,
@@ -1802,6 +1809,19 @@ const adapter = new class QQBotAdapter {
         }
         if(data.notice_type === 'group') {
             data.group_id = data.self_id + this.sep + event.group_id
+            let group_data = data.bot.gl.get(data.group_id) || {}
+            if (!group_data?.group_name && ['action', 'del'].includes(data.sub_type)) {
+                try{
+                    group_data = await data.bot.sdk.getGroupInfo(event.group_id)
+                } catch (e) {
+                    group_data = null
+                    Bot.makeLog("error", ["获取群信息失败", e], data.self_id)
+                }
+            }
+            if (group_data?.group_name) {
+                data.group_name = group_data.group_name
+                data.group_data = group_data
+            }
             data.reply = msg => this.sendGroupMsg({
             ...data, group_id: event.group_id,
             }, msg, { event_id: data.event_id })
