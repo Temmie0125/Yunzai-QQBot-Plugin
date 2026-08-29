@@ -20,25 +20,11 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 ② 开发设置 → 得到 `机器人QQ号:AppID:Token:AppSecret`  
 4. 输入：`#QQBot设置机器人QQ号:AppID:Token:AppSecret:[012]:[01]`
 
-## 格式示例
+## 新增bot
 
-- 机器人QQ号 `114` AppID `514` Token `1919` AppSecret `810` 群Bot 频道私域
+1. 输入：`#QQBot设置`
 
-```
-#QQBot设置114:514:1919:810:1:1
-```
-
-- 新版：机器人QQ号 `114` AppID `514` AppSecret `810` 群Bot 频道私域
-
-```
-#QQBot设置114:514:810:1:1
-```
-
-- WebHook
-
-```
-#QQBot设置114:514:1919:810:2
-```
+2. 根据bot提示发送appid、secret、webhook模式、公私域模式、是否订阅群事件即可
 
 需要启用公网 HTTPS，开放平台添加 url/QQBot
 

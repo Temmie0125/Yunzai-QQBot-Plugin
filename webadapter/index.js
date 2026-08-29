@@ -86,7 +86,7 @@ export function init(ctx) {
         const maps = {}
         for (const k of Object.keys(MAP_FIELDS)) {
           if (k === "markdown_template") {
-            maps[k] = md.template || {}
+            maps[k] = config.template || {}
           } else if (k === "markdown") {
             // 去掉 template / batchSize 子键，只暴露 botQQ -> 模板 id
             const o = {}
@@ -142,13 +142,9 @@ export function init(ctx) {
           for (const k of Object.keys(MAP_FIELDS)) {
             if (!body.maps[k]) continue
             if (k === "markdown_template") {
-              config.markdown = config.markdown || {}
-              config.markdown.template = body.maps[k]
+              config.template = body.maps[k]
             } else if (k === "markdown") {
-              config.markdown = config.markdown || {}
-              const tpl = config.markdown.template
               config.markdown = Object.assign({}, body.maps[k])
-              config.markdown.template = tpl
             } else {
               config[k] = body.maps[k]
             }
