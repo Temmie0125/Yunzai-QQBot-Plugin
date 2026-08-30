@@ -39,6 +39,7 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 - `#开启bot消息过滤`/`#关闭bot消息过滤` 可以开关过滤，以免官机之间相互触发
 - `#开启纯at其他bot过滤`/`#关闭纯at其他bot过滤` 可以开关只艾特了其他官机的消息的过滤，以免在使用其他机器人时触发
 - `#QQBot切换api` 可以切换使用的QQBot api，根据提示可自由切换新旧api
+- `#QQBot统计`/`#QQBot月统计` 可以查看当前QQBot的统计面板图
 
 ## 与原版区别
 

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用统计</title>
+    <style>
+        :root {
+            --accent: #4f6ef7;
+            --accent-hover: #3a5af0;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --border: #e0e3e8;
+            --text: #1f2329;
+            --text-secondary: #8a8f99;
+            --up: #21a366;
+            --down: #f5483b;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+        .topbar {
+            flex: 0 0 auto; min-height: 56px; display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 18px; background: var(--card); border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 20; gap: 10px; flex-wrap: wrap;
+        }
+        .topbar h1 { font-size: 16px; margin: 0; font-weight: 600; flex: 0 0 auto; }
+        .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        /* 当前机器人 */
+        .cur-bot { display: flex; align-items: center; gap: 8px; }
+        .cur-bot .bot-avatar {
+            width: 30px; height: 30px; border-radius: 50%; object-fit: cover;
+            border: 1px solid var(--border); background: #eef0f3; flex: 0 0 auto;
+        }
+        .cur-bot .bot-name { font-size: 13px; font-weight: 600; line-height: 1.2; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cur-bot .bot-qq { font-size: 11px; color: var(--text-secondary); line-height: 1.2; }
+
+        .date-btn, button.act, .picker button, .picker select {
+            height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+            background: #fff; color: var(--text); font-size: 13px; cursor: pointer;
+        }
+        .date-btn { font-variant-numeric: tabular-nums; font-weight: 600; }
+        button.act { background: var(--accent); color: #fff; border-color: var(--accent); }
+        button.act:hover { background: var(--accent-hover); }
+
+        .content { padding: 16px 18px 60px; max-width: 980px; margin: 0 auto; width: 100%; }
+
+        .section {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+        }
+        .section > h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .section > h2 .tag { font-size: 11px; font-weight: 400; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+        .card { background: #fafbfc; border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+        .card .label { font-size: 12px; color: var(--text-secondary); }
+        .card .value { font-size: 24px; font-weight: 700; margin-top: 4px; line-height: 1.1; }
+        .card .delta { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.6; }
+
+        .up { color: var(--up); font-weight: 600; }
+        .down { color: var(--down); font-weight: 600; }
+        .flat { color: var(--text-secondary); font-weight: 600; }
+
+        /* 指标说明「?」：悬停或点按均可查看 */
+        .help {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 14px; height: 14px; margin-left: 5px; border-radius: 50%;
+            background: #e8eaf0; color: var(--text-secondary);
+            font-size: 10px; font-weight: 700; cursor: help;
+            vertical-align: middle; position: relative; flex: 0 0 auto;
+        }
+        .help:hover { background: var(--accent); color: #fff; }
+        .help::after {
+            content: attr(data-tip);
+            position: absolute; left: 50%; bottom: calc(100% + 7px); transform: translateX(-50%);
+            background: rgba(28, 30, 36, .94); color: #fff; font-size: 11px; font-weight: 400;
+            padding: 6px 9px; border-radius: 6px; white-space: nowrap; z-index: 40;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
+            opacity: 0; pointer-events: none; transition: opacity .15s;
+        }
+        .help:hover::after, .help.show-tip::after { opacity: 1; }
+
+        .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+
+        /* 排行榜 */
+        .rank-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f2f3f5; font-size: 13px; }
+        .rank-item:last-child { border-bottom: none; }
+        .rank-no { width: 18px; text-align: center; color: var(--text-secondary); font-weight: 700; flex: 0 0 auto; }
+        .rank-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #eef0f3; border: 1px solid var(--border); }
+        .rank-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rank-bar { flex: 0 0 84px; height: 6px; background: #eef0f3; border-radius: 999px; overflow: hidden; }
+        .rank-bar-in { height: 100%; background: var(--accent); border-radius: 999px; }
+        .rank-val { flex: 0 0 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+
+        /* 图表 */
+        .chart-wrap { position: relative; }
+        .chart-wrap svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+        .chart-tip {
+            position: absolute; display: none; pointer-events: none; z-index: 5;
+            background: rgba(28, 30, 36, .92); color: #fff; border-radius: 8px;
+            padding: 7px 10px; font-size: 12px; line-height: 1.7; white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .18); transform: translateX(-50%);
+        }
+        .chart-tip .tip-date { font-weight: 600; margin-bottom: 2px; opacity: .85; }
+        .chart-tip .tip-row { display: flex; align-items: center; gap: 6px; }
+        .chart-tip .tip-row i { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+        .chart-tip .tip-row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+        .chart-wrap .hit { cursor: pointer; }
+
+        .loading, .empty { text-align: center; color: var(--text-secondary); padding: 40px 0; font-size: 14px; }
+
+        .legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; flex-wrap: wrap; }
+        .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+        /* 日期选择弹窗 */
+        .mask {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, .38);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+        }
+        .mask.show { display: flex; }
+        .picker { background: var(--card); border-radius: var(--radius); padding: 18px; width: 320px; max-width: 100%; box-shadow: 0 12px 32px rgba(0, 0, 0, .18); }
+        .picker-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+        .seg { display: flex; gap: 6px; margin-bottom: 14px; background: #f2f3f5; padding: 3px; border-radius: 9px; }
+        .seg button { flex: 1; border: none; background: transparent; border-radius: 7px; font-size: 13px; color: var(--text-secondary); height: 30px; }
+        .seg button.active { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+        .picker-row { display: flex; align-items: center; gap: 6px; }
+        .picker-row .unit { font-size: 12px; color: var(--text-secondary); flex: 0 0 auto; }
+        .day-wrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+
+        /* 自定义下拉（替代原生 select） */
+        .sel { position: relative; flex: 1; min-width: 0; }
+        .sel-btn {
+            width: 100%; height: 32px; display: flex; align-items: center; justify-content: space-between;
+            gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+            background: #fff; color: var(--text); font-size: 13px; cursor: pointer;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .sel-btn:hover { border-color: var(--accent); }
+        .sel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sel-arrow { color: var(--text-secondary); font-size: 9px; flex: 0 0 auto; transition: transform .18s; }
+        .sel.open .sel-btn { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 110, 247, .12); }
+        .sel.open .sel-arrow { transform: rotate(180deg); }
+        .sel-list {
+            display: none; position: absolute; top: calc(100% + 5px); left: 0; right: 0;
+            max-height: 176px; overflow-y: auto; padding: 4px; background: #fff;
+            border: 1px solid var(--border); border-radius: 9px;
+            box-shadow: 0 8px 22px rgba(16, 24, 40, .14); z-index: 30;
+            /* 预留滚动条位置并细化为圆角细条，避免方形滚动条破坏圆角外观 */
+            scrollbar-gutter: stable;
+            scrollbar-width: thin;
+            scrollbar-color: #cfd4dd transparent;
+        }
+        .sel-list::-webkit-scrollbar { width: 6px; }
+        .sel-list::-webkit-scrollbar-track { background: transparent; }
+        .sel-list::-webkit-scrollbar-thumb {
+            background: #cfd4dd; border-radius: 999px;
+            border: 2px solid transparent; background-clip: content-box;
+        }
+        .sel-list::-webkit-scrollbar-thumb:hover { background: #b3b9c6; background-clip: content-box; }
+        .sel.open .sel-list { display: block; }
+        .sel-item {
+            padding: 7px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sel-item:hover { background: #f2f3f5; }
+        .sel-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+        .picker-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        .picker-foot button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .toast {
+            position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+            background: rgba(0, 0, 0, .8); color: #fff; padding: 8px 16px; border-radius: 8px;
+            font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200;
+        }
+        .toast.show { opacity: 1; }
+
+        /* 移动端：让出横向空间，避免排行榜与卡片溢出 */
+        @media (max-width: 560px) {
+            .content { padding: 12px 12px 48px; }
+            .section { padding: 12px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 10px; }
+            .card .value { font-size: 21px; }
+            .rank-bar { display: none; }
+            .rank-val { flex: 0 0 auto; }
+            .rank-item { font-size: 12.5px; gap: 7px; }
+            .cur-bot .bot-name { max-width: 96px; }
+            .topbar { padding: 8px 12px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="topbar">
+            <h1>使用统计</h1>
+            <div class="topbar-actions">
+                <div class="cur-bot">
+                    <img class="bot-avatar" id="botAvatar" src="" alt="">
+                    <div>
+                        <div class="bot-name" id="botName">加载中…</div>
+                        <div class="bot-qq" id="botQQ"></div>
+                    </div>
+                </div>
+                <button class="date-btn" id="dateBtn">--</button>
+                <button class="act" id="refreshBtn">刷新</button>
+            </div>
+        </div>
+        <div class="content" id="content">
+            <div class="loading">加载中…</div>
+        </div>
+    </div>
+
+    <!-- 日期选择弹窗 -->
+    <div class="mask" id="dateMask">
+        <div class="picker">
+            <div class="picker-title">选择时间</div>
+            <div class="seg">
+                <button class="active" data-mode="day">按日</button>
+                <button data-mode="month">整月</button>
+            </div>
+            <div class="picker-row">
+                <div class="sel" id="yearSel">
+                    <button class="sel-btn" type="button"><span class="sel-val"></span><span class="sel-arrow">▼</span></button>
+                    <div class="sel-list"></div>
+                </div><span class="unit">年</span>
+                <div class="sel" id="monthSel">
+                    <button class="sel-btn" type="button"><span class="sel-val"></span><span class="sel-arrow">▼</span></button>
+                    <div class="sel-list"></div>
+                </div><span class="unit">月</span>
+                <span class="day-wrap" id="dayWrap">
+                    <div class="sel" id="daySel">
+                        <button class="sel-btn" type="button"><span class="sel-val"></span><span class="sel-arrow">▼</span></button>
+                        <div class="sel-list"></div>
+                    </div><span class="unit">日</span>
+                </span>
+            </div>
+            <div class="picker-foot">
+                <button id="pickToday">今天</button>
+                <button id="pickCancel">取消</button>
+                <button class="primary" id="pickOk">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const WEB_BASE = new URLSearchParams(location.search).get("__webBase")
+        const API = WEB_BASE + "/api/qqbot-stat"
+        const CURRENT_BOT_API = WEB_BASE + "/api/bot/current"
+
+        const $ = id => document.getElementById(id)
+
+        function esc(s) {
+            return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
+        }
+
+        function toast(msg) {
+            const t = $("toast")
+            t.textContent = msg
+            t.classList.add("show")
+            clearTimeout(t._t)
+            t._t = setTimeout(() => t.classList.remove("show"), 1800)
+        }
+
+        let curBot = ""
+        let mode = "day"
+        let curDate = ""
+        let pickMode = "day"
+        let lastData = null   // 缓存最近一次数据，供窗口尺寸变化时重绘（不重新请求）
+
+        const pad = n => String(n).padStart(2, "0")
+        const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
+        const monthStr = () => todayStr().slice(0, 7)
+
+        /**
+         * 图表宽度按容器实际宽度取值，配合 viewBox 实现 1:1 像素映射，
+         * 这样 SVG 内字号就是真实像素，移动端也不会被缩小。
+         */
+        function chartW() {
+            const c = $("content")
+            const w = (c?.clientWidth || 860) - 32
+            return Math.max(280, Math.min(w, 900))
+        }
+
+        function fmtRate(v) {
+            if (v == null) return '<span class="up">新增</span>'
+            const cls = v > 0 ? "up" : (v < 0 ? "down" : "flat")
+            const sign = v > 0 ? "+" : ""
+            return `<span class="${cls}">${sign}${v}%</span>`
+        }
+
+        /**
+         * @param {string} label 标题
+         * @param {*} value 数值
+         * @param {number|null} qoq 环比（不传则不显示环比同比行）
+         * @param {number|null} yoy 同比
+         * @param {string} tone "up" 绿色（新增类） / "down" 红色（减少类） / 空为常规
+         * @param {string} tip 标题后的「?」说明文案
+         */
+        function card(label, value, qoq, yoy, tone, tip) {
+            const cls = tone === "up" ? " up" : (tone === "down" ? " down" : "")
+            const d = qoq === undefined ? "" : `环比 ${fmtRate(qoq)}　同比 ${fmtRate(yoy)}`
+            const help = tip ? `<span class="help" data-tip="${esc(tip)}">?</span>` : ""
+            return `<div class="card"><div class="label">${esc(label)}${help}</div><div class="value${cls}">${esc(value)}</div><div class="delta">${d}</div></div>`
+        }
+
+        /** 趋势折线：使用人数 + 使用群数（含透明热区，用于 tooltip） */
+        function renderTrend(trend) {
+            if (!trend || !trend.length) return '<div class="empty">暂无趋势数据</div>'
+            const W = chartW()
+            const H = Math.max(180, Math.round(W * 0.32))
+            const padL = 36, padR = 12, padT = 12, padB = 26
+            const iw = W - padL - padR, ih = H - padT - padB
+            const FS = 11
+            const maxY = Math.max(1, ...trend.map(d => d.users), ...trend.map(d => d.groups))
+            const px = i => padL + (trend.length > 1 ? (iw / (trend.length - 1)) * i : iw / 2)
+            const py = v => padT + ih - (v / maxY) * ih
+
+            let grid = ""
+            for (let i = 0; i <= 4; i++) {
+                const y = padT + (ih / 4) * i
+                const val = Math.round(maxY - (maxY / 4) * i)
+                grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#eef0f3"/>` +
+                    `<text x="${padL - 5}" y="${y + 4}" font-size="${FS}" fill="#8a8f99" text-anchor="end">${val}</text>`
+            }
+            const ptsU = trend.map((d, i) => `${px(i)},${py(d.users)}`).join(" ")
+            const ptsG = trend.map((d, i) => `${px(i)},${py(d.groups)}`).join(" ")
+
+            // 横轴标签密度随宽度自适应，避免移动端文字重叠
+            const step = Math.max(1, Math.ceil(trend.length / (W < 480 ? 5 : 12)))
+            const hitW = trend.length > 1 ? iw / (trend.length - 1) : iw
+            let labels = "", dots = "", hits = ""
+            trend.forEach((d, i) => {
+                const x = px(i)
+                if (i % step === 0 || i === trend.length - 1) {
+                    labels += `<text x="${x}" y="${H - 8}" font-size="${FS}" fill="#8a8f99" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
+                }
+                dots += `<circle cx="${x}" cy="${py(d.users)}" r="3" fill="#4f6ef7"/>` +
+                    `<circle cx="${x}" cy="${py(d.groups)}" r="3" fill="#21a366"/>`
+                hits += `<rect class="hit" data-i="${i}" x="${x - hitW / 2}" y="0" width="${hitW}" height="${H}" fill="transparent"/>`
+            })
+
+            return `<div class="chart-wrap" data-chart="trend">
+                <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${grid}
+                    <polyline points="${ptsU}" fill="none" stroke="#4f6ef7" stroke-width="2" stroke-linejoin="round"/>
+                    <polyline points="${ptsG}" fill="none" stroke="#21a366" stroke-width="2" stroke-linejoin="round"/>
+                    ${dots}${labels}${hits}</svg>
+                <div class="chart-tip"></div>
+            </div>`
+        }
+
+        /** 消息数柱状图（含热区，用于 tooltip） */
+        function renderMsgBar(trend) {
+            if (!trend || !trend.length) return ""
+            const W = chartW()
+            const H = Math.max(120, Math.round(W * 0.18))
+            const padL = 36, padR = 12, padT = 10, padB = 24
+            const iw = W - padL - padR, ih = H - padT - padB
+            const FS = 11
+            const maxM = Math.max(1, ...trend.map(d => d.messages))
+            const slot = iw / trend.length
+            const bw = Math.max(3, slot * 0.6)
+            const step = Math.max(1, Math.ceil(trend.length / (W < 480 ? 5 : 12)))
+
+            let bars = "", labels = "", hits = ""
+            trend.forEach((d, i) => {
+                const cx = padL + slot * (i + 0.5)
+                const h = Math.max(1, (d.messages / maxM) * ih)
+                bars += `<rect x="${cx - bw / 2}" y="${padT + ih - h}" width="${bw}" height="${h}" rx="2" fill="#9db1fb"/>`
+                if (i % step === 0 || i === trend.length - 1) {
+                    labels += `<text x="${cx}" y="${H - 7}" font-size="${FS}" fill="#8a8f99" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
+                }
+                hits += `<rect class="hit" data-i="${i}" x="${padL + slot * i}" y="0" width="${slot}" height="${H}" fill="transparent"/>`
+            })
+            return `<div class="chart-wrap" data-chart="msg">
+                <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
+                    <line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" stroke="#e0e3e8"/>${bars}${labels}${hits}</svg>
+                <div class="chart-tip"></div>
+            </div>`
+        }
+
+        /** 排行榜；withAvatar 时在名称左侧显示头像 */
+        function renderRank(list, keyName, unit, withAvatar) {
+            if (!list || !list.length) return '<div class="empty">暂无数据</div>'
+            const max = Math.max(1, ...list.map(x => Number(x[keyName]) || 0))
+            return list.map((x, i) => `<div class="rank-item">
+                <span class="rank-no">${i + 1}</span>
+                ${withAvatar ? `<img class="rank-avatar" src="${esc(x.avatar || "")}" alt="" onerror="this.style.visibility='hidden'">` : ""}
+                <span class="rank-name" title="${esc(x.name)}">${esc(x.name)}</span>
+                <div class="rank-bar"><div class="rank-bar-in" style="width:${((Number(x[keyName]) || 0) / max * 100).toFixed(1)}%"></div></div>
+                <span class="rank-val">${esc(x[keyName])}${esc(unit || "")}</span>
+            </div>`).join("")
+        }
+
+        /** 绑定图表 tooltip（鼠标 hover 与移动端触摸均支持） */
+        function bindChartTips() {
+            const trend = lastData?.trend || []
+            document.querySelectorAll(".chart-wrap").forEach(wrap => {
+                const tip = wrap.querySelector(".chart-tip")
+                if (!tip) return
+                const kind = wrap.dataset.chart
+
+                wrap.querySelectorAll(".hit").forEach(hit => {
+                    const show = () => {
+                        const d = trend[Number(hit.dataset.i)]
+                        if (!d) return
+                        tip.innerHTML = kind === "trend"
+                            ? `<div class="tip-date">${esc(d.date)}</div>
+                               <div class="tip-row"><i style="background:#4f6ef7"></i>使用人数 <b>${esc(d.users)}</b></div>
+                               <div class="tip-row"><i style="background:#21a366"></i>使用群数 <b>${esc(d.groups)}</b></div>
+                               <div class="tip-row"><i style="background:#9db1fb"></i>消息数 <b>${esc(d.messages)}</b></div>`
+                            : `<div class="tip-date">${esc(d.date)}</div>
+                               <div class="tip-row"><i style="background:#9db1fb"></i>消息数 <b>${esc(d.messages)}</b></div>`
+                        tip.style.display = "block"
+                        const wRect = wrap.getBoundingClientRect()
+                        const hRect = hit.getBoundingClientRect()
+                        const center = hRect.left - wRect.left + hRect.width / 2
+                        tip.style.left = `${Math.max(60, Math.min(center, wRect.width - 60))}px`
+                        tip.style.top = "4px"
+                    }
+                    const hide = () => { tip.style.display = "none" }
+
+                    hit.addEventListener("mouseenter", show)
+                    hit.addEventListener("mousemove", show)
+                    hit.addEventListener("mouseleave", hide)
+                    // 移动端：触摸显示，抬手后延时隐藏
+                    hit.addEventListener("touchstart", show, { passive: true })
+                    hit.addEventListener("touchmove", show, { passive: true })
+                    hit.addEventListener("touchend", () => setTimeout(hide, 1800), { passive: true })
+                })
+            })
+        }
+
+        function render(data) {
+            lastData = data
+            const c = $("content")
+            if (data.empty || !data.daily) {
+                c.innerHTML = '<div class="empty">暂无机器人，或统计功能未开启</div>'
+                return
+            }
+            const d = data.daily, ev = d.events || {}
+            const isMonth = data.mode === "month"
+            // 环比/同比口径不再写在卡片里，改由标题后的「?」查看
+            const rateTip = isMonth
+                ? "环比 = 与上月对比；同比 = 与去年同月对比"
+                : "环比 = 与昨日对比；同比 = 与上周同日对比"
+
+            let h = ""
+            h += `<div class="section"><h2>概览 <span class="tag">${esc(d.date)}</span></h2><div class="grid">
+                ${card("使用人数", d.users, d.usersQoQ, d.usersYoY, "", rateTip)}
+                ${card("使用群数", d.groups, d.groupsQoQ, d.groupsYoY, "", rateTip)}
+                ${card("消息数", d.messages, d.messagesQoQ, d.messagesYoY, "", rateTip)}
+                ${card("新增用户", d.newUsers, undefined, undefined, "up")}
+                ${card("存留用户", d.keepUsers, undefined, undefined, "")}
+                ${card("减少用户", d.lostUsers, undefined, undefined, "down")}
+                ${card("新增群", d.newGroups, undefined, undefined, "up")}
+                ${card("存留群", d.keepGroups, undefined, undefined, "")}
+                ${card("减少群", d.lostGroups, undefined, undefined, "down")}
+                ${card("新加入群", ev.join || 0, undefined, undefined, "up")}
+                ${card("被踢出群", ev.kick || 0, undefined, undefined, "down")}
+                ${card("新增好友", ev.fadd || 0, undefined, undefined, "up")}
+                ${card("减少好友", ev.fdel || 0, undefined, undefined, "down")}
+            </div></div>`
+
+            const tLen = (data.trend || []).length
+            h += `<div class="section"><h2>${isMonth ? "本月每日趋势" : "近 " + tLen + " 天趋势"} <span class="tag">悬停/点按查看数值</span></h2>
+                <div class="legend"><span><i style="background:#4f6ef7"></i>使用人数</span><span><i style="background:#21a366"></i>使用群数</span></div>
+                ${renderTrend(data.trend)}
+                <div style="margin-top:12px">
+                    <div class="legend"><span><i style="background:#9db1fb"></i>每日消息数</span></div>
+                    ${renderMsgBar(data.trend)}
+                </div>
+            </div>`
+
+            h += `<div class="two">
+                <div class="section"><h2>使用最多的人 Top${esc((data.topUsers || []).length)}</h2>${renderRank(data.topUsers, "count", " 次", true)}</div>
+                <div class="section"><h2>各群使用人数 Top${esc((data.groupStats || []).length)}</h2>${renderRank(data.groupStats, "users", " 人", false)}</div>
+            </div>`
+
+            c.innerHTML = h
+            bindChartTips()
+        }
+
+        /** 当前机器人（取自控制台选中项，不提供页面内切换） */
+        async function loadCurrentBot() {
+            try {
+                const r = await fetch(CURRENT_BOT_API)
+                const d = await r.json()
+                const bot = d.bot || (Array.isArray(d.bots) ? d.bots[0] : null)
+                if (!bot) {
+                    $("botName").textContent = "未选择机器人"
+                    return ""
+                }
+                curBot = String(bot.self_id || d.selectedSelfId || "")
+                const av = $("botAvatar")
+                av.src = bot.avatar || ""
+                av.style.visibility = "visible"
+                av.onerror = () => { av.style.visibility = "hidden" }
+                $("botName").textContent = bot.nickname || curBot
+                $("botQQ").textContent = curBot
+                return curBot
+            } catch {
+                $("botName").textContent = "获取失败"
+                return ""
+            }
+        }
+
+        async function load() {
+            if (!curBot) {
+                $("content").innerHTML = '<div class="empty">请先在控制台顶部选择机器人</div>'
+                return
+            }
+            try {
+                const q = new URLSearchParams({ bot: curBot, date: curDate, mode, days: 7, topN: 10 })
+                const r = await fetch(`${API}?${q}`)
+                const d = await r.json()
+                if (!d.ok) throw new Error(d.error || "加载失败")
+                render(d)
+            } catch (e) {
+                $("content").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`
+            }
+        }
+
+        // ====== 自定义下拉（替代原生 select，风格与页面一致） ======
+        function closeAllSels() {
+            document.querySelectorAll(".sel.open").forEach(s => s.classList.remove("open"))
+        }
+        document.addEventListener("click", closeAllSels)
+
+        function setupSel(id, initial, onChange) {
+            const el = $(id)
+            const btn = el.querySelector(".sel-btn")
+            const valEl = el.querySelector(".sel-val")
+            const list = el.querySelector(".sel-list")
+            let values = []
+            let cur = String(initial)
+
+            const renderList = () => {
+                list.innerHTML = values.map(v =>
+                    `<div class="sel-item${v === cur ? " active" : ""}" data-v="${esc(v)}">${esc(v)}</div>`
+                ).join("")
+            }
+
+            btn.addEventListener("click", e => {
+                e.stopPropagation()
+                const wasOpen = el.classList.contains("open")
+                closeAllSels()
+                if (!wasOpen) { renderList(); el.classList.add("open") }
+            })
+            list.addEventListener("click", e => {
+                const item = e.target.closest(".sel-item")
+                if (!item) return
+                cur = item.dataset.v
+                valEl.textContent = cur
+                closeAllSels()
+                onChange?.(cur)
+            })
+
+            valEl.textContent = cur
+            return {
+                get value() { return cur },
+                set(v) { cur = String(v); valEl.textContent = cur },
+                setValues(vs) { values = vs.map(String) },
+            }
+        }
+
+        // ====== 日期弹窗 ======
+        const nowInit = new Date()
+        const yearSel = setupSel("yearSel", String(nowInit.getFullYear()), () => refreshDays())
+        const monthSel = setupSel("monthSel", pad(nowInit.getMonth() + 1), () => refreshDays())
+        const daySel = setupSel("daySel", pad(nowInit.getDate()), () => { })
+
+        yearSel.setValues([nowInit.getFullYear(), nowInit.getFullYear() - 1, nowInit.getFullYear() - 2])
+        monthSel.setValues(Array.from({ length: 12 }, (_, i) => pad(i + 1)))
+
+        /** 按当前年月刷新「日」可选范围（如 2 月自动变为 28/29 天） */
+        function refreshDays() {
+            const n = new Date(Number(yearSel.value), Number(monthSel.value), 0).getDate()
+            daySel.setValues(Array.from({ length: n }, (_, i) => pad(i + 1)))
+            if (Number(daySel.value) > n) daySel.set(pad(n))
+        }
+        refreshDays()
+
+        function syncPickerFromState() {
+            pickMode = mode
+            document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("active", b.dataset.mode === pickMode))
+            const [y, m, d] = (mode === "month" ? `${curDate}-01` : curDate).split("-")
+            if (y) yearSel.set(y)
+            if (m) monthSel.set(m)
+            refreshDays()
+            if (mode !== "month" && d) daySel.set(d)
+            $("dayWrap").style.display = pickMode === "month" ? "none" : "flex"
+            closeAllSels()
+        }
+        const closePicker = () => $("dateMask").classList.remove("show")
+        function applyPicker() {
+            mode = pickMode
+            const y = yearSel.value, m = monthSel.value
+            curDate = mode === "month" ? `${y}-${m}` : `${y}-${m}-${daySel.value}`
+            $("dateBtn").textContent = curDate
+            closePicker()
+            load()
+        }
+
+        document.querySelectorAll(".seg button").forEach(b => {
+            b.addEventListener("click", () => {
+                pickMode = b.dataset.mode
+                document.querySelectorAll(".seg button").forEach(x => x.classList.toggle("active", x === b))
+                $("dayWrap").style.display = pickMode === "month" ? "none" : "flex"
+            })
+        })
+        $("pickOk").addEventListener("click", applyPicker)
+        $("pickCancel").addEventListener("click", closePicker)
+        $("pickToday").addEventListener("click", () => {
+            mode = pickMode
+            curDate = pickMode === "month" ? monthStr() : todayStr()
+            $("dateBtn").textContent = curDate
+            closePicker()
+            load()
+        })
+        $("dateMask").addEventListener("click", e => { if (e.target === $("dateMask")) closePicker() })
+        $("dateBtn").addEventListener("click", () => { syncPickerFromState(); $("dateMask").classList.add("show") })
+        $("refreshBtn").addEventListener("click", load)
+
+        // 「?」说明：移动端无 hover，点按也可切换显示
+        document.addEventListener("click", e => {
+            const help = e.target.closest?.(".help")
+            if (help) {
+                e.stopPropagation()
+                const was = help.classList.contains("show-tip")
+                document.querySelectorAll(".help.show-tip").forEach(x => x.classList.remove("show-tip"))
+                help.classList.toggle("show-tip", !was)
+                return
+            }
+            document.querySelectorAll(".help.show-tip").forEach(x => x.classList.remove("show-tip"))
+        })
+
+        // 监听主页面消息：切换机器人 / 主题变更
+        window.addEventListener("message", e => {
+            const d = e.data
+            if (!d || !d.type) return
+            if (d.type === "bot-changed") {
+                loadCurrentBot().then(bot => { if (bot) load() })
+                return
+            }
+            if (d.type === "theme-changed" && d.themeColor) {
+                document.documentElement.style.setProperty("--accent", d.themeColor)
+            }
+        })
+
+        // 窗口尺寸变化：按新宽度重绘图表，保证字号与布局自适应（不重新请求数据）
+        let resizeTimer = null
+        window.addEventListener("resize", () => {
+            clearTimeout(resizeTimer)
+            resizeTimer = setTimeout(() => { if (lastData) render(lastData) }, 200)
+        })
+
+        // 初始化
+        curDate = todayStr()
+        $("dateBtn").textContent = curDate
+        try { parent.postMessage({ type: "wa-request-theme" }, "*") } catch { }
+        loadCurrentBot().then(bot => { if (bot) load() })
+    </script>
+</body>
+
+</html>

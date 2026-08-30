@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>QQBot 使用统计</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 22px;
+            width: 900px;
+            background: #f0f2f5;
+            color: #1f2329;
+            font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrap { background: #fff; border-radius: 14px; padding: 20px 22px; }
+
+        .head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #e0e3e8; }
+        .head .title { font-size: 20px; font-weight: 700; }
+        .head .sub { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #8a8f99; }
+        .head .bot-avatar {
+            width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+            background: #eef0f3; border: 1px solid #e0e3e8;
+        }
+        .head .bot-name { font-weight: 600; color: #1f2329; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .head .bot-date { color: #b0b5bd; white-space: nowrap; }
+
+        .sec-title { font-size: 15px; font-weight: 600; margin: 18px 0 10px; }
+
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .card { background: #fafbfc; border: 1px solid #e0e3e8; border-radius: 10px; padding: 12px; }
+        .card .label { font-size: 12px; color: #8a8f99; }
+        .card .value { font-size: 24px; font-weight: 700; margin-top: 4px; line-height: 1.1; }
+        .card .delta { font-size: 12px; color: #8a8f99; margin-top: 6px; line-height: 1.5; }
+
+        .up { color: #21a366; font-weight: 700; }
+        .down { color: #f5483b; font-weight: 700; }
+
+        .sec-title .note { font-size: 11px; font-weight: 400; color: #8a8f99; margin-left: 8px; }
+
+        .two { display: flex; gap: 18px; }
+        .two > .col { flex: 1; min-width: 0; }
+
+        .row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f2f3f5; font-size: 13px; }
+        .row:last-child { border-bottom: none; }
+        .no { width: 20px; text-align: center; color: #8a8f99; font-weight: 700; flex: 0 0 auto; }
+        .rank-avatar {
+            width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+            background: #eef0f3; border: 1px solid #e0e3e8;
+        }
+        .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .val { color: #4f6ef7; font-weight: 600; white-space: nowrap; flex: 0 0 auto; }
+
+        .trend { display: flex; align-items: flex-end; gap: 12px; height: 132px; padding-top: 8px; }
+        .tcol { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
+        .tval { font-size: 11px; color: #8a8f99; white-space: nowrap; }
+        .tbox { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+        .tbar { width: 100%; background: linear-gradient(180deg, #7b93fb, #4f6ef7); border-radius: 4px 4px 0 0; }
+        .tdate { font-size: 11px; color: #8a8f99; margin-top: 5px; white-space: nowrap; }
+        /* 整月（最多 31 列）：收紧间距、只显示日号，避免横向溢出 */
+        .trend-dense { gap: 4px; }
+        .trend-dense .tval { font-size: 9px; }
+        .trend-dense .tdate { font-size: 9px; margin-top: 4px; }
+
+        .line-chart { padding: 2px 0; }
+        .line-chart svg { display: block; width: 100%; height: auto; }
+
+        .legend { display: flex; gap: 16px; font-size: 11px; color: #8a8f99; margin-bottom: 6px; }
+        .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
+        .empty { text-align: center; color: #8a8f99; font-size: 13px; padding: 18px 0; }
+
+        .foot { margin-top: 16px; text-align: center; font-size: 11px; color: #b0b5bd; }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="head">
+            <div class="title">QQBot 使用统计</div>
+            <div class="sub">
+                <img class="bot-avatar" src="{{botAvatar}}" alt="" onerror="this.style.visibility='hidden'">
+                <span class="bot-name">{{botName}}</span>
+                <span class="bot-date">· {{date}}</span>
+            </div>
+        </div>
+
+        <div class="sec-title">概览<span class="note">{{periodNote}}</span></div>
+        <div class="grid">
+            <div class="card">
+                <div class="label">使用人数</div>
+                <div class="value">{{users}}</div>
+                <div class="delta">环比 <span class="{{if upUsers}}up{{else}}down{{/if}}">{{qoqUsers}}</span>　同比 {{yoyUsers}}</div>
+            </div>
+            <div class="card">
+                <div class="label">使用群数</div>
+                <div class="value">{{groups}}</div>
+                <div class="delta">环比 <span class="{{if upGroups}}up{{else}}down{{/if}}">{{qoqGroups}}</span>　同比 {{yoyGroups}}</div>
+            </div>
+            <div class="card">
+                <div class="label">消息数</div>
+                <div class="value">{{messages}}</div>
+                <div class="delta">环比 <span class="{{if upMessages}}up{{else}}down{{/if}}">{{qoqMessages}}</span>　同比 {{yoyMessages}}</div>
+            </div>
+            <div class="card">
+                <div class="label">人均消息</div>
+                <div class="value">{{avgMsg}}</div>
+                <div class="delta">消息数 / 使用人数</div>
+            </div>
+        </div>
+
+        <div class="sec-title">用户与群变动<span class="note">{{changeNote}}</span></div>
+        <div class="grid">
+            <div class="card"><div class="label">新增用户</div><div class="value up">{{newUsers}}</div></div>
+            <div class="card"><div class="label">存留用户</div><div class="value">{{keepUsers}}</div></div>
+            <div class="card"><div class="label">减少用户</div><div class="value down">{{lostUsers}}</div></div>
+            <div class="card"><div class="label">新增群</div><div class="value up">{{newGroups}}</div></div>
+            <div class="card"><div class="label">存留群</div><div class="value">{{keepGroups}}</div></div>
+            <div class="card"><div class="label">减少群</div><div class="value down">{{lostGroups}}</div></div>
+            <div class="card"><div class="label">新加入群</div><div class="value up">{{join}}</div></div>
+            <div class="card"><div class="label">被踢出群</div><div class="value down">{{kick}}</div></div>
+            <div class="card"><div class="label">新增好友</div><div class="value up">{{fadd}}</div></div>
+            <div class="card"><div class="label">减少好友</div><div class="value down">{{fdel}}</div></div>
+            <div class="card"><div class="label">净增群</div><div class="value">{{netGroup}}</div></div>
+            <div class="card"><div class="label">净增好友</div><div class="value">{{netFriend}}</div></div>
+        </div>
+
+        <div class="sec-title">使用人数 / 使用群数趋势</div>
+        <div class="line-chart">
+            <div class="legend">
+                <span><i style="background:#4f6ef7"></i>使用人数</span>
+                <span><i style="background:#21a366"></i>使用群数</span>
+            </div>
+            <svg viewBox="0 0 {{trendChart.w}} {{trendChart.h}}" preserveAspectRatio="xMidYMid meet" role="img">
+                {{each trendChart.grid g}}
+                <line x1="{{trendChart.padL}}" y1="{{g.y}}" x2="{{trendChart.right}}" y2="{{g.y}}" stroke="#eef0f3" stroke-width="1"/>
+                <text x="{{trendChart.padL - 6}}" y="{{g.y + 4}}" font-size="10" fill="#8a8f99" text-anchor="end">{{g.val}}</text>
+                {{/each}}
+                <polyline points="{{trendChart.pointsU}}" fill="none" stroke="#4f6ef7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                <polyline points="{{trendChart.pointsG}}" fill="none" stroke="#21a366" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                {{each trendChart.items p}}
+                <circle cx="{{p.x}}" cy="{{p.yu}}" r="3.5" fill="#fff" stroke="#4f6ef7" stroke-width="2"/>
+                <circle cx="{{p.x}}" cy="{{p.yg}}" r="3.5" fill="#fff" stroke="#21a366" stroke-width="2"/>
+                {{if trendChart.showLabels}}
+                <text x="{{p.x}}" y="{{p.yu - 10}}" font-size="10" fill="#4f6ef7" font-weight="700" text-anchor="middle">{{p.users}}</text>
+                <text x="{{p.x}}" y="{{p.yg + 16}}" font-size="10" fill="#21a366" font-weight="700" text-anchor="middle">{{p.groups}}</text>
+                {{/if}}
+                <text x="{{p.x}}" y="{{trendChart.h - 8}}" font-size="10" fill="#8a8f99" text-anchor="middle">{{if isMonth}}{{p.day}}{{else}}{{p.md}}{{/if}}</text>
+                {{/each}}
+            </svg>
+        </div>
+
+        <div class="sec-title">{{trendTitle}}</div>
+        {{if isMonth}}
+        <div class="trend trend-dense">
+            {{each trend t}}
+            <div class="tcol">
+                <div class="tval">{{t.messages}}</div>
+                <div class="tbox"><div class="tbar" style="height:{{t.pct}}%"></div></div>
+                <div class="tdate">{{t.day}}</div>
+            </div>
+            {{/each}}
+        </div>
+        {{else if chart}}
+        <div class="line-chart">
+            <svg viewBox="0 0 {{chart.w}} {{chart.h}}" preserveAspectRatio="xMidYMid meet" role="img">
+                {{each chart.grid g}}
+                <line x1="{{chart.padL}}" y1="{{g.y}}" x2="{{chart.right}}" y2="{{g.y}}" stroke="#eef0f3" stroke-width="1"/>
+                <text x="{{chart.padL - 6}}" y="{{g.y + 4}}" font-size="10" fill="#8a8f99" text-anchor="end">{{g.val}}</text>
+                {{/each}}
+                <polyline points="{{chart.points}}" fill="none" stroke="#4f6ef7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                {{each chart.items p}}
+                <circle cx="{{p.x}}" cy="{{p.y}}" r="4" fill="#fff" stroke="#4f6ef7" stroke-width="2"/>
+                <text x="{{p.x}}" y="{{p.y - 11}}" font-size="11" fill="#4f6ef7" font-weight="700" text-anchor="middle">{{p.messages}}</text>
+                <text x="{{p.x}}" y="{{chart.h - 8}}" font-size="10" fill="#8a8f99" text-anchor="middle">{{p.md}}</text>
+                {{/each}}
+            </svg>
+        </div>
+        {{/if}}
+
+        <div class="two">
+            <div class="col">
+                <div class="sec-title">使用最多的人</div>
+                {{if topUsers.length}}
+                {{each topUsers u index}}
+                <div class="row">
+                    <span class="no">{{index + 1}}</span>
+                    <img class="rank-avatar" src="{{u.avatar}}" alt="" onerror="this.style.visibility='hidden'">
+                    <span class="name">{{u.name}}</span>
+                    <span class="val">{{u.count}} 次</span>
+                </div>
+                {{/each}}
+                {{else}}
+                <div class="empty">暂无数据</div>
+                {{/if}}
+            </div>
+            <div class="col">
+                <div class="sec-title">各群使用人数</div>
+                {{if groupStats.length}}
+                {{each groupStats g index}}
+                <div class="row">
+                    <span class="no">{{index + 1}}</span>
+                    <span class="name">{{g.name}}</span>
+                    <span class="val">{{g.users}} 人</span>
+                </div>
+                {{/each}}
+                {{else}}
+                <div class="empty">暂无数据</div>
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="foot">QQBot-Plugin · 数据统计</div>
+    </div>
+</body>
+
+</html>

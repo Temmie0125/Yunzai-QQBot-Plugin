@@ -24,6 +24,7 @@ const BOOLEAN_FIELDS = [
   { key: "filter_only_at_other_bot", label: "过滤纯艾特其他机器人", desc: "只艾特其他 bot 时过滤" },
   { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境" },
   { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）" },
+  { key: "stat", label: "使用统计", desc: "按机器人记录每日使用人数/群数、留存与增减，并在 Web 控制台展示（需重启后生效）" },
 ]
 
 // 全局数字字段
@@ -50,9 +51,14 @@ function getCfg() {
 
 function botQQList() {
   const u = Bot.uin
-  if (Array.isArray(u)) return u.slice()
-  if (u && typeof u === "object") return Object.values(u)
-  return []
+  const ids = Array.isArray(u) ? u.slice() : (u && typeof u === "object" ? Object.values(u) : [])
+  // 只保留 QQBot 适配器的机器人，过滤沙盒（QQBotSandbox）
+  return ids
+    .map(String)
+    .filter(id => {
+      const aid = Bot[id]?.adapter?.id
+      return !aid || aid === "QQBot"
+    })
 }
 
 export function init(ctx) {
@@ -63,6 +69,20 @@ export function init(ctx) {
     icon: "⚙",
     src: "setting.html",
   })
+
+  // 使用统计页：仅在统计开关开启时注册（关闭时不初始化展示页，需重启生效）
+  try {
+    if (getCfg().config.stat === true) {
+      ctx.registerPage({
+        id: "qqbot-stat",
+        title: "使用统计",
+        icon: "📊",
+        src: "stat.html",
+      })
+    }
+  } catch (e) {
+    ctx.logger?.warn?.(`[QQBot] 使用统计页未注册: ${e.message}`)
+  }
 
   let apiReady = false
   function registerApi() {
@@ -158,6 +178,46 @@ export function init(ctx) {
 
         configSave()
         res.json({ ok: true })
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // 使用统计：某机器人某日数据 + 趋势（开关关闭时不可用）
+    ctx.registerApi("get", "/qqbot-stat", async (req, res) => {
+      try {
+        const { config } = getCfg()
+        if (!config.stat) return res.status(403).json({ ok: false, error: "使用统计未开启" })
+        const S = Bot.QQBotStat
+        if (!S) return res.status(500).json({ ok: false, error: "统计模块未就绪" })
+
+        const list = botQQList()
+        const bot = String(req.query.bot || list[0] || "")
+        // mode: day=按日（默认） / month=整月
+        const mode = req.query.mode === "month" ? "month" : "day"
+        const date = req.query.date
+          ? String(req.query.date)
+          : (mode === "month" ? S.dateStr().slice(0, 7) : S.dateStr())
+        const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 31)
+        const topN = Math.min(Math.max(Number(req.query.topN) || 10, 1), 50)
+        if (!bot) return res.json({ ok: true, empty: true, botQQList: list })
+
+        const data = await S.getSummary(bot, date, days, topN, mode)
+        res.json({ ok: true, ...data, botQQList: list })
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // 清空某机器人的统计数据
+    ctx.registerApi("post", "/qqbot-stat/clear", async (req, res) => {
+      try {
+        const { config } = getCfg()
+        if (!config.stat) return res.status(403).json({ ok: false, error: "使用统计未开启" })
+        const bot = String((req.body || {}).bot || req.query.bot || "")
+        if (!bot) return res.status(400).json({ ok: false, error: "缺少 bot" })
+        const cleared = await Bot.QQBotStat.clearStat(bot)
+        res.json({ ok: true, cleared })
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message })
       }

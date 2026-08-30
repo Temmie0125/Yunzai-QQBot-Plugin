@@ -18,8 +18,16 @@ import { QQBotBlacklist } from "./apps/blacklist.js"
 import { QQBotGroupBind } from "./apps/groupBind.js"
 import { QQBotQrLogin } from "./apps/qrlogin.js"
 import { QQBotAppSet } from "./apps/appset.js"
+import { QQBotStat } from "./apps/stat.js"
+
+import {
+    initStat, getSummary, getDaily, getTrend, getTopUsers, getGroupStats, clearStat, dateStr,
+} from "./lib/stat.js"
 
 await msgSequelize.sync()
+
+// 统计库建表 + 清理过期数据
+await initStat()
 
 try {
     await msgSequelize.query("ALTER TABLE messages ADD COLUMN bot_nickname TEXT DEFAULT ''")
@@ -34,6 +42,9 @@ Bot.MsgIdxDB = MsgIdxDB
 Bot.ActiveListDB = ActiveListDB
 Bot.PinDB = PinDB
 
+// 暴露统计模块给 webadapter 操作模块调用（避免其直接依赖 adapter 层，规避加载顺序问题）
+Bot.QQBotStat = { getSummary, getDaily, getTrend, getTopUsers, getGroupStats, clearStat, dateStr }
+
 Bot.adapter.push(adapter)
 
 // 聚合命令类，供 Yunzai 加载器注册
@@ -44,6 +55,7 @@ export const apps = {
     QQBotGroupBind,
     QQBotQrLogin,
     QQBotAppSet,
+    QQBotStat,
 }
 
 logger.info(logger.yellow("- QQBot 适配器插件加载完成"))

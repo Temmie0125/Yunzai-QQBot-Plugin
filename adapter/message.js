@@ -3,6 +3,7 @@ import { config, blacklist } from "./context.js"
 import { isGroupBlacklisted, isUserBlacklisted } from "../lib/blacklist.js"
 import { saveMessage } from "../lib/message.js"
 import { saveNotice } from "../lib/notice.js"
+import { recordMessage, recordNotice } from "../lib/stat.js"
 
 export const messageMethods = {
     // ====== 黑名单辅助（在 Bot.em 前调用） ======
@@ -82,6 +83,9 @@ export const messageMethods = {
 
         // 黑名单拦截（在 Bot.em 下发事件前）
         if (this._checkBlacklist(data)) return
+
+        // 使用统计（异步，不阻塞事件下发）
+        recordMessage(data)
 
         Bot.em(`${data.post_type}.${data.message_type}.${data.sub_type}`, data)
     },
@@ -195,6 +199,9 @@ export const messageMethods = {
         if (Bot.autoRecordMessage === true) saveMessage(data)
         // 黑名单拦截（在 Bot.em 下发事件前）
         if (this._checkBlacklist(data)) return
+
+        // 按钮点击也计为一次使用
+        recordMessage(data)
 
         Bot.em(`${data.post_type}.${data.message_type}.${data.sub_type}`, data)
     },
@@ -324,6 +331,10 @@ export const messageMethods = {
 
         // 黑名单拦截（在 Bot.em 下发事件前）
         if (this._checkBlacklist(data)) return
+
+        // 统计入群 / 被踢 / 好友增减（内部按 notice_type + sub_type 过滤）
+        recordNotice(data)
+
         Bot.em(`${data.post_type}.${data.notice_type}.${data.sub_type}`, data)
     }
 }

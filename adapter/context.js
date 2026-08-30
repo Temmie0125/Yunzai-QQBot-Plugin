@@ -20,6 +20,8 @@ export const { config, configSave } = await makeConfig("QQBot", {
     delay: 100,
     filter_bot_msg: false,
     filter_only_at_other_bot: false,
+    // 使用统计总开关：默认关闭，关闭时不记录数据、不注册展示页
+    stat: false,
     rawButton: {},
     markdown: {},
     template: {},
