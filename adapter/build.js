@@ -100,6 +100,7 @@ export const buildMethods = {
     makeButton(data, button) {
         const msg = {
             id: ulid(),
+            ...(button.group_id && { group_id: button.group_id }),
             render_data: {
                 label: button.text,
                 visited_label: button.clicked_text,
