@@ -142,12 +142,17 @@ export const pickMethods = {
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
-            getGroupMemberList: () => i.bot.sdk.getGroupMemberList(i.group_id),
+            getGroupMemberList: (cursor = undefined) => {
+                i.bot.sdk.getGroupMemberList(i.group_id, cursor)
+            },
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
             getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
-            kickGroupMember: user_id => i.bot.sdk.kickGroupMember(i.group_id, user_id),
+            kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
+                if (typeof user_ids === 'string') user_ids = [user_ids]
+                i.bot.sdk.kickGroupMember(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+            },
             muteGroupMember: (user_id, seconds) => {
                 Bot.makeLog(
                     "info",
@@ -237,6 +242,11 @@ export const pickMethods = {
             },
             getGroupRequestList: () => {
                 return i.bot.sdk.getGroupRequestList(i.group_id)
+            },
+            getGroupMemberBlackList: () => i.getGroupMemberBlackList(i.group_id),
+            changeGroupMemberBlackList: (op, member_openids) => {
+                if (typeof member_openids === 'string') member_openids = [member_openids]
+                return i.bot.sdk.changeGroupMemberBlackList(i.group_id, op, member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
             }
         }
     },
