@@ -17,8 +17,8 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 ```
 3. 打开：[QQ 开放平台](https://q.qq.com) 创建 Bot：  
 ① 创建机器人  
-② 开发设置 → 得到 `机器人QQ号:AppID:Token:AppSecret`  
-4. 输入：`#QQBot设置机器人QQ号:AppID:Token:AppSecret:[012]:[01]`
+② 开发设置 → 得到 `机器人QQ号`、`AppID`、`Token`、`AppSecret`  
+4. 输入：`#QQBot设置` 并按照提示输入对应配置
 
 ## 新增bot
 
@@ -298,6 +298,14 @@ Bot.makeMarkdownMsg = async (data, msg) => {
   ]
 }
 ```
+
+- 踢出群成员接口`e.group.kickGroupMember(user_ids)`、`e.bot.pickGroup(group_id).kickGroupMember(user_ids)`,这里的user_ids为用户openid数组，如果单用户也可以直接传openid，会自动转换成数组。
+
+- 获取群黑名单接口``e.group.getGroupMemberBlackList()`、`e.bot.pickGroup(group_id).getGroupMemberBlackList()`
+
+- 添加群黑名单接口`e.group.addGroupMemberBlackList(user_ids)`、`e.bot.pickGroup(group_id).addGroupMemberBlackList(user_ids)`,这里的user_ids为用户openid数组，如果单用户也可以直接传openid，会自动转换成数组。
+
+- 移除群黑名单接口`e.group.delGroupMemberBlackList(user_ids)`、`e.bot.pickGroup(group_id).delGroupMemberBlackList(user_ids)`,这里的user_ids为用户openid数组，如果单用户也可以直接传openid，会自动转换成数组。
 
 </details>
 
