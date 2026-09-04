@@ -243,10 +243,14 @@ export const pickMethods = {
             getGroupRequestList: () => {
                 return i.bot.sdk.getGroupRequestList(i.group_id)
             },
-            getGroupMemberBlackList: () => i.getGroupMemberBlackList(i.group_id),
-            changeGroupMemberBlackList: (op, member_openids) => {
+            getGroupMemberBlackList: () => i.bot.sdk.getGroupMemberBlackList(i.group_id),
+            addGroupMemberBlackList: (member_openids) => {
                 if (typeof member_openids === 'string') member_openids = [member_openids]
-                return i.bot.sdk.changeGroupMemberBlackList(i.group_id, op, member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
+                return i.bot.sdk.changeGroupMemberBlackList(i.group_id, 'add', member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
+            },
+            delGroupMemberBlackList: (member_openids) => {
+                if (typeof member_openids === 'string') member_openids = [member_openids]
+                return i.bot.sdk.changeGroupMemberBlackList(i.group_id, 'del', member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
             }
         }
     },
