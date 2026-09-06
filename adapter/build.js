@@ -155,12 +155,12 @@ export const buildMethods = {
             }
             if (button.cancel_text.length > 4){
                 logger.error("cancel_text 长度过长，已自动使用默认文本")
-                button.cancel_text = "是"
+                button.cancel_text = "否"
             }
             msg.action.modal = {
                 content: button.content || "是否确认操作?",
                 confirm_text: button.confirm_text || "是",
-                cancel_text: button.cancel_text || "是"
+                cancel_text: button.cancel_text || "否"
             }
         }
 
