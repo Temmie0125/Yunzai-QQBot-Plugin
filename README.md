@@ -2,6 +2,8 @@
 
 # TRSS-Yunzai QQBot Plugin
 
+
+
 TRSS-Yunzai QQBot 适配器 插件
 
 [![访问量](https://visitor-badge.glitch.me/badge?page_id=TimeRainStarSky.Yunzai-QQBot-Plugin&right_color=red&left_text=访%20问%20量)](https://github.com/TimeRainStarSky/Yunzai-QQBot-Plugin)
@@ -12,6 +14,13 @@ TRSS-Yunzai QQBot 适配器 插件
 [![访问量](https://profile-counter.glitch.me/TimeRainStarSky-Yunzai-QQBot-Plugin/count.svg)](https://github.com/TimeRainStarSky/Yunzai-QQBot-Plugin)
 
 </div>
+
+## 先刨坑，有可能会咕咕咕
+
+> [!WARNING]
+> 当前 Yunzai QQBot 适配器已经与官方文档**严重脱节**，SDK甚至停留在两年前的版本。
+> 目前计划基于该分支进行**彻底重构**，目标是重写并适配官方文档的绝大部分功能，并对齐现有适配器实现，最大程度减少下游插件的适配成本。
+> 先刨坑，很可能咕咕咕！
 
 ## 安装教程
 
