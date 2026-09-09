@@ -102,7 +102,7 @@ export class QQBotQrLogin extends plugin {
 
     async _saveAndConnectBot(uin, appId, secret) {
         const uinStr = String(uin)
-        const botObj = { QQ: uin, appid: appId, secret, webhook: false, private: true, group: false }
+        const botObj = { QQ: uin, appid: appId, secret, webhook: false, private: false, group: true }
 
         // 更新或新增 config.token
         const idx = config.token.findIndex(t => String(t.QQ) === uinStr)
