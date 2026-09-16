@@ -464,6 +464,8 @@ export const pickMethods = {
         }
         Bot.makeLog("info", `频道私聊消息：[${data.sender.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
+        data.platform = "guild-private"
+
         data.reply = msg => this.sendDirectMsg({
             ...data,
             user_id: event.user_id,
@@ -489,6 +491,9 @@ export const pickMethods = {
             openid: event.sender?.user_id
         }
         data.group_id = `qg_${event.guild_id}-${event.channel_id}`
+
+        data.platform = "guild-channel"
+
         Bot.makeLog("info", `频道消息：[${data.group_id}, ${data.sender.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
         data.reply = msg => this.sendGuildMsg({
             ...data,
