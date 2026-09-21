@@ -195,7 +195,7 @@ export const connectMethods = {
         }
 
         const uinStr = String(uin)
-        const botObj = { QQ: uin, appid: bindData.bot_appid, secret, webhook: false, private: true, group: false }
+        const botObj = { QQ: uin, appid: bindData.bot_appid, secret, webhook: false, private: false, group: true }
         config.token.push(botObj)
         await configSave()
 
