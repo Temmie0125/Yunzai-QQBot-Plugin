@@ -136,7 +136,7 @@ export const connectMethods = {
             return Bot.makeLog("warn", "找不到对应 QQBot", appid)
         if (req.body?.d && "plain_token" in req.body.d)
             return this.makeWebHookSign(this.appid[appid].uin, req, this.appid[appid].info.secret)
-        if ("t" in req.body)
+        if (req.body?.t && "t" in req.body)
             this.appid[appid].sdk.dispatchEvent(req.body.t, req.body)
         req.res.sendStatus(200)
     },
