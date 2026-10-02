@@ -19,7 +19,7 @@ export const sendMethods = {
 
                     rets.data.push(ret)
                     if (ret.id) rets.message_id.push(ret.id)
-                    if (Bot.autoRecordMessage === true) await saveSentMessage(data, segs, ret)
+                    if (Bot.autoRecordMessage === true) saveSentMessage(data, segs, ret)
                 } catch (err) {
                     Bot.makeLog("error", ["发送消息错误", segs, err], data.self_id)
                     rets.error.push(err)
