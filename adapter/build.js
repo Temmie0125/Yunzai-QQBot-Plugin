@@ -9,6 +9,26 @@ import { config, sharp } from "./context.js"
 import { compressImage } from "../lib/media.js"
 
 export const buildMethods = {
+    isMp3(buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 3) return false
+        return (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0) || buf.slice(0, 3).toString() === 'ID3'
+    },
+
+    isWav(buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 12) return false
+        return buf.slice(0, 4).toString() === 'RIFF' && buf.slice(8, 12).toString() === 'WAVE'
+    },
+
+    isOgg(buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 4) return false
+        return buf.slice(0, 4).toString() === 'OggS'
+    },
+
+    isAmr(buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 6) return false
+        return buf.slice(0, 6).toString() === '#!AMR'
+    },
+
     async makeRecord(file) {
         if (config.toBotUpload) {
             // 缓存第一个支持 uploadRecord 的 bot，避免每次遍历
@@ -29,7 +49,9 @@ export const buildMethods = {
         }
         const buffer = await Bot.Buffer(file)
         if (!Buffer.isBuffer(buffer)) return file
-        if (isSilk(buffer)) return buffer
+        if (isSilk(buffer) || this.isMp3(buffer) || this.isWav(buffer) || this.isOgg(buffer) || this.isAmr(buffer)) {
+            return buffer
+        }
 
         const convFile = path.join("temp", ulid())
         try {
