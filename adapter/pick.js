@@ -33,6 +33,10 @@ export const pickMethods = {
             ...i,
             sendMsg: msg => this.sendFriendMsg(i, msg),
             recallMsg: message_id => this.recallFriendMsg(i, message_id),
+            getInfo: () =>{ // 兼容
+                let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
+                return data
+            },
             getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
         }
     },
@@ -56,6 +60,13 @@ export const pickMethods = {
         return {
             ...this.pickFriend(id, user_id),
             ...i,
+            getInfo: (force = false) =>{ // 兼容
+                if (!force){
+                    let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
+                    if (data && data.nickname) return data
+                }
+                return i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
+            },
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
             getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
@@ -140,14 +151,25 @@ export const pickMethods = {
             ...i,
             sendMsg: msg => this.sendGroupMsg(i, msg),
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
+            getInfo: (force = false) => {
+                if (!force){
+                    let data = i.bot.gl.get(i.group_id)
+                    if (data && data.group_name) return data
+                }
+                return i.bot.sdk.getGroupInfo(i.group_id)
+            },
+            getAvatarUrl: () => `https://q.qlogo.cn/g?b=qq&nk=1&s=100`, // 暂时占位
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
             getGroupMemberList: (cursor = undefined) => {
                 i.bot.sdk.getGroupMemberList(i.group_id, cursor)
             },
+            getMemberList: (cursor = undefined) => {
+                i.bot.sdk.getGroupMemberList(i.group_id, cursor)
+            }, // 兼容野鸡
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
-            getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
+            //getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
@@ -303,6 +325,15 @@ export const pickMethods = {
         return {
             ...i,
             sendMsg: msg => this.sendGuildMsg(i, msg),
+            getInfo: () => {
+                return i.bot.sdk.getGuildInfo(i.guild_id)
+            },
+            getChannelList: () => {
+                return i.bot.sdk.getChannelList(i.guild_id)
+            },
+            getMemberList: () => {
+                return i.bot.sdk.getGuildMemberList(i.guild_id)
+            },
             recallMsg: (message_id, hide) => this.recallGuildMsg(i, message_id, hide),
             pickMember: user_id => this.pickGuildMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
