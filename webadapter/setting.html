@@ -149,6 +149,37 @@
         }
         .num-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,110,247,.12); }
 
+        /* 自定义下拉选择（与页面风格统一，弃用原生 select） */
+        .select-wrap { position: relative; width: 200px; flex: 0 0 auto; }
+        .select-box {
+            height: 32px; padding: 0 30px 0 10px; border: 1px solid var(--border, #d0d5dd);
+            border-radius: 6px; font-size: 13px; background: var(--input-bg, #fff); color: var(--text);
+            display: flex; align-items: center; cursor: pointer; position: relative;
+            transition: border-color .15s, box-shadow .15s;
+            overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+        }
+        .select-box:hover { border-color: #c5c9d1; }
+        .select-box.open { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,110,247,.12); }
+        .select-box .select-caret {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            width: 12px; height: 12px; color: var(--text-secondary); pointer-events: none;
+            transition: transform .15s;
+        }
+        .select-box.open .select-caret { transform: translateY(-50%) rotate(180deg); }
+        .select-menu {
+            position: absolute; top: 38px; left: 0; right: 0; z-index: 30;
+            background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 4px; display: none;
+            max-height: 240px; overflow-y: auto;
+        }
+        .select-menu.show { display: block; }
+        .select-option {
+            padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+            color: var(--text); transition: background .1s;
+        }
+        .select-option:hover { background: #f2f4fb; }
+        .select-option.active { background: #eef1fb; color: var(--accent); font-weight: 600; }
+
         .add-form .mini {
             height: 32px; padding: 0 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; flex-shrink: 0;
         }
@@ -309,6 +340,38 @@
         ]
         // 依赖沙箱状态显示提示的字段（使用沙箱时此选项不起作用）
         const SANDBOX_DEPENDENT = new Set(["newapi"])
+        // 腾讯云 COS 地域选项（与 ImageBed-Plugin 图床一致）
+        const REGION_OPTIONS = [
+            { value: "ap-guangzhou", label: "广州 (ap-guangzhou)" },
+            { value: "ap-shanghai", label: "上海 (ap-shanghai)" },
+            { value: "ap-beijing", label: "北京 (ap-beijing)" },
+            { value: "ap-nanjing", label: "南京 (ap-nanjing)" },
+            { value: "ap-chengdu", label: "成都 (ap-chengdu)" },
+            { value: "ap-chongqing", label: "重庆 (ap-chongqing)" },
+            { value: "ap-beijing-1", label: "北京一区 (ap-beijing-1)" },
+            { value: "ap-hongkong", label: "中国香港 (ap-hongkong)" },
+            { value: "ap-singapore", label: "新加坡 (ap-singapore)" },
+            { value: "ap-jakarta", label: "雅加达 (ap-jakarta)" },
+            { value: "ap-seoul", label: "首尔 (ap-seoul)" },
+            { value: "ap-bangkok", label: "曼谷 (ap-bangkok)" },
+            { value: "ap-tokyo", label: "东京 (ap-tokyo)" },
+            { value: "me-saudi-arabia", label: "利雅得/中东 (me-saudi-arabia)" },
+            { value: "na-siliconvalley", label: "硅谷/美西 (na-siliconvalley)" },
+            { value: "na-ashburn", label: "弗吉尼亚/美东 (na-ashburn)" },
+            { value: "sa-saopaulo", label: "圣保罗/南美 (sa-saopaulo)" },
+            { value: "eu-frankfurt", label: "法兰克福/欧洲 (eu-frankfurt)" },
+        ]
+
+        // 内网加速设置分区字段
+        const INTERNAL_BOOL_META = [
+            { key: "internal", label: "分片使用内网上传", desc: "开启后分片上传使用内网上传，可大幅提升文件发送速度，非腾讯云服务器不用开启此选项（需重启后生效）" },
+        ]
+        const INTERNAL_SELECT_META = [
+            { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当使用内部API后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", options: REGION_OPTIONS },
+        ]
+        const INTERNAL_NUMBER_META = [
+            { key: "concurrency", label: "并发数", desc: "分片上传并发数量，如未使用内网上传请将此选项调整到1，如果使用内网且成功配置最大可调制20（需重启后生效）", default: 1, integer: true, min: 1, max: 20, inBot: true },
+        ]
         const NUMBER_META = [
             { key: "imageLength", label: "图片压缩阈值", desc: "超过此大小(MB)的图片将自动压缩", default: 3 },
             { key: "chunkSize", label: "流式分块大小", desc: "流式消息每块显示的字数", default: 2 },
@@ -325,26 +388,56 @@
 
         function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) }
 
+        // ---- 行渲染辅助函数（基础设置与内网加速设置复用） ----
+        function boolRowHtml(f) {
+            const checked = state.bools[f.key] ? "checked" : ""
+            const hint = SANDBOX_DEPENDENT.has(f.key) && state.sandboxOn
+                ? `<div class="bool-hint" data-sandboxhint="${f.key}">注意：使用沙箱时此选项不起作用</div>`
+                : ""
+            return `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div>${hint}</div>
+                <label class="pill-switch"><input type="checkbox" data-bool="${f.key}" ${checked}><span class="slider"></span></label></div>`
+        }
+        function numRowHtml(f) {
+            const val = state.numbers[f.key] != null ? state.numbers[f.key] : f.default
+            const minAttr = f.min != null ? ` min="${f.min}"` : ""
+            const maxAttr = f.max != null ? ` max="${f.max}"` : ""
+            const intAttr = f.integer ? ` step="1" data-integer="1"` : ""
+            return `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div></div>
+                <input type="number" data-num="${f.key}" value="${esc(String(val))}" class="num-input"${minAttr}${maxAttr}${intAttr}></div>`
+        }
+        function selectRowHtml(f) {
+            const val = state.texts[f.key] != null ? state.texts[f.key] : (f.options[0] ? f.options[0].value : "")
+            let curLabel = val, opts = ""
+            for (const o of f.options) {
+                const active = o.value === val ? " active" : ""
+                if (o.value === val) curLabel = o.label
+                opts += `<div class="select-option${active}" data-val="${esc(o.value)}">${esc(o.label)}</div>`
+            }
+            return `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div></div>
+                <div class="select-wrap" data-select="${f.key}">
+                    <div class="select-box" data-selectbox="${f.key}">
+                        <span class="select-text">${esc(curLabel)}</span>
+                        <svg class="select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="select-menu" data-selectmenu="${f.key}">${opts}</div>
+                </div></div>`
+        }
+
         function render() {
             const c = document.getElementById("content")
             let html = ""
 
-            // boolean 区
+            // 基础设置
             html += `<div class="section"><h2>基础设置</h2>`
-            for (const f of BOOLEAN_META) {
-                const checked = state.bools[f.key] ? "checked" : ""
-                const hint = SANDBOX_DEPENDENT.has(f.key) && state.sandboxOn
-                    ? `<div class="bool-hint" data-sandboxhint="${f.key}">注意：使用沙箱时此选项不起作用</div>`
-                    : ""
-                html += `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div>${hint}</div>
-                    <label class="pill-switch"><input type="checkbox" data-bool="${f.key}" ${checked}><span class="slider"></span></label></div>`
-            }
-            // 数字字段
-            for (const f of NUMBER_META) {
-                const val = state.numbers[f.key] != null ? state.numbers[f.key] : f.default
-                html += `<div class="bool-row"><div class="bool-info"><div class="name">${esc(f.label)}</div><div class="desc">${esc(f.desc)}</div></div>
-                    <input type="number" data-num="${f.key}" value="${esc(String(val))}" class="num-input"></div>`
-            }
+            for (const f of BOOLEAN_META) html += boolRowHtml(f)
+            for (const f of NUMBER_META) html += numRowHtml(f)
+            html += `</div>`
+
+            // 内网加速设置
+            html += `<div class="section"><h2>内网加速设置</h2>`
+            for (const f of INTERNAL_BOOL_META) html += boolRowHtml(f)
+            for (const f of INTERNAL_SELECT_META) html += selectRowHtml(f)
+            for (const f of INTERNAL_NUMBER_META) html += numRowHtml(f)
             html += `</div>`
 
             // map 字段区
@@ -615,11 +708,69 @@
             })
             // 数字字段
             document.querySelectorAll("[data-num]").forEach(el => {
+                const isInt = el.dataset.integer === "1"
+                const min = el.min !== "" ? Number(el.min) : null
+                const max = el.max !== "" ? Number(el.max) : null
+                const clamp = v => {
+                    if (isInt) v = Math.round(v)
+                    if (min != null && v < min) v = min
+                    if (max != null && v > max) v = max
+                    return v
+                }
                 el.addEventListener("input", () => {
-                    const v = parseFloat(el.value)
-                    state.numbers[el.dataset.num] = isNaN(v) ? el.value : v
+                    let v = parseFloat(el.value)
+                    if (isNaN(v)) { state.numbers[el.dataset.num] = el.value; return }
+                    if (isInt) v = Math.round(v)
+                    state.numbers[el.dataset.num] = v
+                })
+                // 失焦时夹紧到合法范围并回填
+                el.addEventListener("change", () => {
+                    let v = parseFloat(el.value)
+                    if (isNaN(v)) v = Number(el.min) || 0
+                    v = clamp(v)
+                    el.value = v
+                    state.numbers[el.dataset.num] = v
                 })
             })
+            // 自定义下拉选择字段
+            document.querySelectorAll("[data-select]").forEach(wrap => {
+                const key = wrap.dataset.select
+                const box = wrap.querySelector(".select-box")
+                const menu = wrap.querySelector(".select-menu")
+                if (box._selInited) return
+                box._selInited = true
+
+                box.addEventListener("click", (e) => {
+                    e.stopPropagation()
+                    const isOpen = menu.classList.contains("show")
+                    // 关闭其它已展开的下拉
+                    document.querySelectorAll(".select-menu.show").forEach(m => {
+                        if (m !== menu) { m.classList.remove("show"); if (m.previousElementSibling) m.previousElementSibling.classList.remove("open") }
+                    })
+                    menu.classList.toggle("show", !isOpen)
+                    box.classList.toggle("open", !isOpen)
+                })
+                menu.querySelectorAll(".select-option").forEach(opt => {
+                    opt.addEventListener("click", () => {
+                        const v = opt.dataset.val
+                        state.texts[key] = v
+                        box.querySelector(".select-text").textContent = opt.textContent
+                        menu.querySelectorAll(".select-option").forEach(o => o.classList.remove("active"))
+                        opt.classList.add("active")
+                        menu.classList.remove("show")
+                        box.classList.remove("open")
+                    })
+                })
+            })
+            // 点击空白处关闭所有下拉
+            if (!document._selectGlobalBound) {
+                document._selectGlobalBound = true
+                document.addEventListener("click", () => {
+                    document.querySelectorAll(".select-menu.show").forEach(m => {
+                        m.classList.remove("show"); if (m.previousElementSibling) m.previousElementSibling.classList.remove("open")
+                    })
+                })
+            }
             document.querySelectorAll("[data-mapbool]").forEach(el => {
                 el.addEventListener("change", () => { state.maps[el.dataset.mapbool][el.dataset.k] = el.checked })
             })
@@ -779,7 +930,7 @@
                 const r = await fetch(API)
                 const d = await r.json()
                 if (!d.ok) throw new Error(d.error || "加载失败")
-                state = { bools: d.bools || {}, maps: d.maps || {}, numbers: d.numbers || {}, sandboxOn: !!d.sandboxOn }
+                state = { bools: d.bools || {}, maps: d.maps || {}, numbers: d.numbers || {}, texts: d.texts || {}, sandboxOn: !!d.sandboxOn }
                 botQQList = d.botQQList || []
                 render()
                 document.getElementById("saveBtn").disabled = false
@@ -795,7 +946,7 @@
                 const r = await fetch(API, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ bools: state.bools, maps: state.maps, numbers: state.numbers }),
+                    body: JSON.stringify({ bools: state.bools, maps: state.maps, numbers: state.numbers, texts: state.texts }),
                 })
                 const d = await r.json()
                 if (!d.ok) throw new Error(d.error || "保存失败")

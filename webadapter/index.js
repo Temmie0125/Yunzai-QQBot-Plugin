@@ -14,6 +14,7 @@ import path from "node:path"
 const HIDDEN = new Set(["tips", "token", "keyboardid", "toQRCode", "toBotUpload"])
 
 // boolean 类型字段（用胶囊开关），排除 HIDDEN 中的
+// inBot: true 表示该字段位于 config.bot 子对象中（如 sandbox/newapi/internal）
 const BOOLEAN_FIELDS = [
   { key: "toCallback", label: "全局回调按钮", desc: "自动发送按钮全局转换回调按钮" },
   { key: "hideGuildRecall", label: "隐藏频道撤回提示", desc: "撤回频道消息时不提示" },
@@ -22,16 +23,24 @@ const BOOLEAN_FIELDS = [
   { key: "fakemsg", label: "野收官发", desc: "野收官发全局开关，配合野收官发插件使用" },
   { key: "filter_bot_msg", label: "过滤机器人消息", desc: "忽略来自 bot 的消息" },
   { key: "filter_only_at_other_bot", label: "过滤纯艾特其他机器人", desc: "只艾特其他 bot 时过滤" },
-  { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境" },
-  { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）" },
+  { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境", inBot: true },
+  { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）", inBot: true },
+  { key: "internal", label: "分片使用内网上传", desc: "开启后分片上传使用内网上传，可大幅提升文件发送速度，非腾讯云服务器不用开启此选项（需重启后生效）", inBot: true },
   { key: "stat", label: "使用统计", desc: "按机器人记录每日使用人数/群数、留存与增减，并在 Web 控制台展示（需重启后生效）" },
 ]
 
 // 全局数字字段
+// inBot: true 表示该字段位于 config.bot 子对象中（如 concurrency）
 const NUMBER_FIELDS = [
   { key: "imageLength", label: "图片压缩阈值", desc: "超过此大小(MB)的图片将自动压缩", default: 3 },
   { key: "chunkSize", label: "流式分块大小", desc: "流式消息每块显示的字数", default: 2 },
   { key: "delay", label: "流式延迟", desc: "流式消息每块显示的间隔(毫秒)", default: 100 },
+  { key: "concurrency", label: "并发数", desc: "分片上传并发数量，如未使用内网上传请将此选项调整到1，如果使用内网且成功配置最大可调制20（需重启后生效）", default: 1, inBot: true, integer: true, min: 1, max: 20 },
+]
+
+// config.bot 子对象中的下拉选择字段（基础设置中显示为下拉框，值为字符串）
+const BOT_SELECT_FIELDS = [
+  { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou" },
 ]
 
 // 多值映射字段（按 botQQ 索引），值在页面显示为列表
@@ -95,12 +104,17 @@ export function init(ctx) {
         const { config } = getCfg()
         const bools = {}
         for (const f of BOOLEAN_FIELDS) {
-          if (f.key === "sandbox" || f.key === "newapi") bools[f.key] = !!config.bot?.[f.key]
-          else bools[f.key] = !!config[f.key]
+          bools[f.key] = f.inBot ? !!config.bot?.[f.key] : !!config[f.key]
         }
         const numbers = {}
         for (const f of NUMBER_FIELDS) {
-          numbers[f.key] = config[f.key] != null ? config[f.key] : f.default
+          numbers[f.key] = f.inBot
+            ? (config.bot?.[f.key] != null ? config.bot[f.key] : f.default)
+            : (config[f.key] != null ? config[f.key] : f.default)
+        }
+        const texts = {}
+        for (const f of BOT_SELECT_FIELDS) {
+          texts[f.key] = config.bot?.[f.key] != null ? config.bot[f.key] : f.default
         }
         const md = config.markdown || {}
         const maps = {}
@@ -121,6 +135,7 @@ export function init(ctx) {
           bools,
           maps,
           numbers,
+          texts,
           sandboxOn: !!config.bot?.sandbox,
           markdownBatchSize: typeof md.batchSize === "number" ? md.batchSize : 5,
           botQQList: botQQList(),
@@ -140,7 +155,7 @@ export function init(ctx) {
         if (body.bools) {
           for (const f of BOOLEAN_FIELDS) {
             if (typeof body.bools[f.key] === "boolean") {
-              if (f.key === "sandbox" || f.key === "newapi") {
+              if (f.inBot) {
                 config.bot = config.bot || {}
                 config.bot[f.key] = body.bools[f.key]
               } else {
@@ -153,7 +168,18 @@ export function init(ctx) {
         // 数字字段
         if (body.numbers) {
           for (const f of NUMBER_FIELDS) {
-            if (body.numbers[f.key] != null) config[f.key] = Number(body.numbers[f.key])
+            if (body.numbers[f.key] != null) {
+              let v = Number(body.numbers[f.key])
+              if (f.integer) v = Math.round(v)
+              if (f.min != null) v = Math.max(f.min, v)
+              if (f.max != null) v = Math.min(f.max, v)
+              if (f.inBot) {
+                config.bot = config.bot || {}
+                config.bot[f.key] = v
+              } else {
+                config[f.key] = v
+              }
+            }
           }
         }
 
@@ -174,6 +200,14 @@ export function init(ctx) {
         if (typeof body.markdownBatchSize === "number") {
           config.markdown = config.markdown || {}
           config.markdown.batchSize = body.markdownBatchSize
+        }
+
+        // bot 子对象文本字段
+        if (body.texts) {
+          config.bot = config.bot || {}
+          for (const f of BOT_SELECT_FIELDS) {
+            if (body.texts[f.key] != null) config.bot[f.key] = String(body.texts[f.key])
+          }
         }
 
         configSave()

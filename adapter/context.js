@@ -27,6 +27,9 @@ export const { config, configSave } = await makeConfig("QQBot", {
     template: {},
     bot: {
         newapi: true,
+        internal: false,
+        region: "ap-guangzhou",
+        concurrency: 1,
         sandbox: false,
         maxRetry: Infinity,
         timeout: 30000,
@@ -37,6 +40,8 @@ export const { config, configSave } = await makeConfig("QQBot", {
     tips: [
         "欢迎使用 TRSS-Yunzai QQBot Plugin自用改版 ! 作者：windtrace",
         "参考：https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin",
+        "bot中的newapi为新版api，internal为分片内网上传开关，region为腾讯云cos地域，concurrency为分片上传并发数量，sandbox为沙箱环境，maxRetry为最大重试次数，timeout为超时时间",
+        "如果一直提示put超时可将concurrency调低，最低1，如果是腾讯云服务器可以将internal设置为true，并将region设置为服务器所在地域对应cos的region，然后将concurrency设置为20",
     ],
 })
 
