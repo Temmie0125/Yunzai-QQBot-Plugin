@@ -62,6 +62,49 @@ export const pickMethods = {
         return getCachedBotRole(self_id, group_id) ?? fetchBotRole(self_id, group_id)
     },
 
+    // 通过 ref_msg_idx 从本地消息索引换取被引用消息的真实message_id
+    // （官方事件不直接下发被引用消息ID，引用撤回/回复等依赖此换算）
+    async getRefMessageId(ref_msg_idx) {
+        if (!ref_msg_idx) return ""
+        try {
+            const stored = await redis.get(`wind-msg-idx:${ref_msg_idx}`)
+            return stored ? JSON.parse(stored)?.message_id || "" : ""
+        } catch {
+            return ""
+        }
+    },
+
+    // 从本地消息存储按message_id查回完整消息（引用撤回、获取引用内容等）
+    async getStoredMsg(type, key, message_id) {
+        if (!message_id) return null
+        try {
+            const items = await redis.zRange(`wind-msg:${type}:${key}`, 0, -1)
+            for (let i = items.length - 1; i >= 0; i--) {
+                let m = items[i]
+                if (typeof m === "string") {
+                    try { m = JSON.parse(m) } catch { continue }
+                }
+                if (m?.message_id === message_id) return m
+            }
+        } catch (err) {
+            Bot.makeLog("debug", ["查询本地消息失败", err], String(key))
+        }
+        return null
+    },
+
+    // 为收到的引用消息注入reply段与source，使 e.reply_id / e.getReply 生效（icqq语义）
+    async resolveRefMessage(data) {
+        try {
+            const refId = await this.getRefMessageId(data.ref_msg_idx)
+            if (!refId) return
+            if (Array.isArray(data.message))
+                data.message.unshift({ type: "reply", id: refId })
+            data.source ||= { message_id: refId }
+        } catch (err) {
+            Bot.makeLog("debug", ["解析引用消息失败", err], data.self_id)
+        }
+    },
+
     pickFriend(id, user_id) {
         if (typeof user_id !== "string")
             user_id = String(user_id)
@@ -78,6 +121,8 @@ export const pickMethods = {
             ...i,
             sendMsg: msg => this.sendFriendMsg(i, msg),
             recallMsg: message_id => this.recallFriendMsg(i, message_id),
+            // 从本地消息存储查回消息（引用撤回等依赖）
+            getMsg: async message_id => this.getStoredMsg("private", `${id}${this.sep}${i.user_id}`, message_id),
             getInfo: () =>{ // 兼容
                 let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
                 return data
@@ -219,6 +264,8 @@ export const pickMethods = {
             getAvatarUrl: () => `https://q.qlogo.cn/g?b=qq&nk=1&s=100`, // 暂时占位
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
+            // 从本地消息存储查回消息（引用撤回等依赖）
+            getMsg: async message_id => this.getStoredMsg("group", group_id, message_id),
             getGroupMemberList: (cursor = undefined) => {
                 i.bot.sdk.getGroupMemberList(i.group_id, cursor)
             },
@@ -449,6 +496,9 @@ export const pickMethods = {
 
         data.platform = "QQ-private"
 
+        // 引用消息：换算被引用消息ID并注入reply段
+        await this.resolveRefMessage(data)
+
         // 记录被动回复锚点：sendFile 等不经过事件对象的发送通道由 fixPassiveSource 回退使用
         ;(data.bot._passiveAnchor ||= {})[`user:${event.sender.user_id}`] = {
             id: data.message_id,
@@ -517,6 +567,9 @@ export const pickMethods = {
         data.reply_user = event.msg_elements?.[0]?.author || {}
 
         data.mentions = event.mentions || []
+
+        // 引用消息：换算被引用消息ID并注入reply段
+        await this.resolveRefMessage(data)
 
         const atUser = data.mentions.find(m => !m.bot) ?? data.mentions.at(-1) ?? null;
 

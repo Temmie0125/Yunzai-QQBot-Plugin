@@ -242,7 +242,7 @@ export const sendMethods = {
         for (const i of message_id) try {
             msgs.push(await recall(i))
         } catch (err) {
-            Bot.makeLog("debug", ["撤回消息错误", i, err], data.self_id)
+            Bot.makeLog("warn", ["撤回消息错误", i, err], data.self_id)
             msgs.push(false)
         }
         return msgs
