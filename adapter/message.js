@@ -311,6 +311,18 @@ export const messageMethods = {
             case "del":
                 if (data.notice_type !== "guild") {
                     if (Bot.autoRecordMessage === true) saveNotice(data)
+                    // 官方机器人进/退群事件(GROUP_ADD_ROBOT/GROUP_DEL_ROBOT)补发 icqq 语义的群自增减通知
+                    // (user_id 为 Bot 自身)，yenai-plugin 等插件靠 notice.group.increase/decrease 识别新增/减少群聊
+                    const change = event.sub_type === "add" ? "increase" : "decrease"
+                    Bot.em(`notice.group.${change}`, {
+                        ...data,
+                        post_type: "notice",
+                        notice_type: "group",
+                        sub_type: change,
+                        user_id: id,
+                        nickname: Bot[id].nickname,
+                        operator_id: event.operator_id ? `${id}${this.sep}${event.operator_id}` : undefined,
+                    })
                 }
                 break
             case "update":
@@ -323,6 +335,31 @@ export const messageMethods = {
                 data.invited_by = event.invited_by
                 data.verify_info = event.verify_info
                 data.join_request_id = event.join_request_id
+                if (data.notice_type === "group") {
+                    // 官方加群申请事件(GROUP_JOIN_REQUEST)补发 icqq 语义的 request 事件，
+                    // yenai-plugin 等插件监听 Bot.on("request")，若只发 notice.group.request 永远收不到
+                    const rawPayload = event.raw?.d || {}
+                    const comment = event.verify_info?.verify_message
+                        || event.verify_info?.review_qa_list?.map(qa => `${qa.question}：${qa.answer}`).join("\n")
+                        || ""
+                    const tips = [
+                        rawPayload.risk_tips,
+                        rawPayload.auto_approved ? "该申请已被自动审批通过，无需处理" : "",
+                    ].filter(Boolean).join("；")
+                    Bot.em("request.group.add", {
+                        ...data,
+                        post_type: "request",
+                        request_type: "group",
+                        sub_type: "add",
+                        group_id: data.group_id,
+                        user_id: `${id}${this.sep}${event.user_id}`,
+                        nickname: event.user_name || data.nickname || "未知",
+                        comment,
+                        tips,
+                        flag: event.join_request_id,
+                        inviter_id: event.invited_by ? `${id}${this.sep}${event.invited_by}` : undefined,
+                    })
+                }
                 break
             default:
                 Bot.makeLog("warn", ["未知通知", event], id)
