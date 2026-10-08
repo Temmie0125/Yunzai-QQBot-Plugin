@@ -92,11 +92,46 @@ export const pickMethods = {
         return null
     },
 
+    // 按内容从新到旧匹配本地存储消息（引用换算兜底）：
+    // 成员消息的ref_msg_idx与其自身msg_idx是不同密文无法按键索引，
+    // 但引用元素(type 103)携带被引用消息的content，据此匹配最近一条相同内容的通知
+    async findStoredMsgIdByContent(type, key, content) {
+        if (!content) return ""
+        try {
+            const items = await redis.zRange(`wind-msg:${type}:${key}`, -200, -1)
+            for (let i = items.length - 1; i >= 0; i--) {
+                let m = items[i]
+                if (typeof m === "string") {
+                    try { m = JSON.parse(m) } catch { continue }
+                }
+                if (!m?.message_id || m.recalled) continue
+                const rm = String(m.raw_message || "").trim()
+                if (rm === content) return m.message_id
+            }
+        } catch (err) {
+            Bot.makeLog("debug", ["按内容匹配引用消息失败", err], String(key))
+        }
+        return ""
+    },
+
     // 为收到的引用消息注入reply段与source，使 e.reply_id / e.getReply 生效（icqq语义）
     async resolveRefMessage(data) {
         try {
-            const refId = await this.getRefMessageId(data.ref_msg_idx)
-            if (!refId) return
+            let refId = await this.getRefMessageId(data.ref_msg_idx)
+            if (!refId && data.ref_msg_idx) {
+                // 键索引未命中：用引用元素携带的被引用内容做兜底匹配
+                const quoteEl = Array.isArray(data.msg_elements)
+                    && data.msg_elements.find(e => e?.message_type === 103 && typeof e.content === "string")
+                if (quoteEl) {
+                    const key = data.group_id || data.user_id
+                    const msgType = data.group_id ? "group" : "private"
+                    refId = await this.findStoredMsgIdByContent(msgType, key, quoteEl.content.trim())
+                }
+            }
+            if (!refId) {
+                if (data.ref_msg_idx) data.reply_unresolved = true
+                return
+            }
             if (Array.isArray(data.message))
                 data.message.unshift({ type: "reply", id: refId })
             data.source ||= { message_id: refId }
