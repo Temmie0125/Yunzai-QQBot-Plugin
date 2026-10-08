@@ -79,6 +79,38 @@ export const connectMethods = {
             gl: await this.getGroupMap(id),
             gml: await this.getMemberMap(id),
 
+            // 系统消息（icqq兼容）：官方Bot无好友申请审批，遍历各群返回待审批的入群申请，
+            // 每项携带 approve(yes) 走官方审批接口，供 yenai-plugin 等插件的申请处理流程使用
+            getSystemMsg: async () => {
+                const systemMsg = []
+                for (const group_id of Bot[id].gl.keys()) {
+                    const gid = String(group_id).replace(`${id}${this.sep}`, "")
+                    try {
+                        const list = await Bot[id].sdk.getGroupRequestList(gid)
+                        for (const req of list) {
+                            systemMsg.push({
+                                request_type: "group",
+                                sub_type: "add",
+                                group_id: String(group_id),
+                                user_id: `${id}${this.sep}${req.member_openid}`,
+                                nickname: req.username || req.nickname || "未知",
+                                comment: req.verify_info?.verify_message
+                                    || req.verify_info?.review_qa_list?.map(qa => `${qa.question}：${qa.answer}`).join("\n")
+                                    || "",
+                                flag: req.join_request_id,
+                                tips: req.risk_tips || "",
+                                time: req.apply_at ? Math.floor(new Date(req.apply_at).getTime() / 1000) : undefined,
+                                approve: (yes = true, reject_reason = "", add_to_member_blacklist = false) =>
+                                    Bot[id].sdk.approvalGroupRequest(gid, req.member_openid, yes ? "approve" : "decline", req.join_request_id, reject_reason, add_to_member_blacklist),
+                            })
+                        }
+                    } catch (err) {
+                        Bot.makeLog("debug", ["获取入群申请列表失败", err], id)
+                    }
+                }
+                return systemMsg
+            },
+
             callback: {},
         }
 

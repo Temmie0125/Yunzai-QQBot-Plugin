@@ -1,6 +1,33 @@
 // pick 方法 / 构造消息对象 / 群管方法
 import { config, configSave, blacklist } from "./context.js"
 
+// Bot 在各群的角色缓存（官方bot_state接口），key: `${self_id}:${group_openid}`
+// 群管命令的 group.is_admin/is_owner 判断依赖它，TTL 内复用，避免每条命令打一次API
+const botRoleCache = new Map()
+const BOT_ROLE_TTL = 10 * 60 * 1000
+
+// 强制刷新角色缓存（忽略TTL），返回最新角色；失败时保留旧值
+async function fetchBotRole(self_id, group_id) {
+    try {
+        const info = await Bot[self_id].sdk.getGroupBotInfo(group_id)
+        const role = info?.member_role || "member"
+        botRoleCache.set(`${self_id}:${group_id}`, { role, time: Date.now() })
+        return role
+    } catch (err) {
+        Bot.makeLog("debug", ["获取Bot群内角色失败", err], self_id)
+        return undefined
+    }
+}
+
+// 带TTL的角色查询：命中直接返回，过期则后台刷新并先返回旧值
+function getCachedBotRole(self_id, group_id) {
+    const key = `${self_id}:${group_id}`
+    const cached = botRoleCache.get(key)
+    if (!cached || Date.now() - cached.time > BOT_ROLE_TTL)
+        fetchBotRole(self_id, group_id).catch(() => {})
+    return cached?.role
+}
+
 export const pickMethods = {
     rfc3339CN(seconds = 0) {
         const d = new Date(Date.now() + seconds * 1000);
@@ -28,6 +55,11 @@ export const pickMethods = {
             if (appid) return `https://q.qlogo.cn/qqapp/${appid}/${id}/${size}`
         }
         return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}`
+    },
+
+    // 查询Bot在群内的角色（owner/admin/member），供外部（如群消息事件）预热缓存
+    getBotRole(self_id, group_id) {
+        return getCachedBotRole(self_id, group_id) ?? fetchBotRole(self_id, group_id)
     },
 
     pickFriend(id, user_id) {
@@ -73,6 +105,9 @@ export const pickMethods = {
         return {
             ...this.pickFriend(id, user_id),
             ...i,
+            // 成员权限判断（icqq兼容）：读gml缓存的role，成员发言事件会持续更新
+            get is_owner() { return i.role === "owner" },
+            get is_admin() { return ["admin", "owner"].includes(i.role) },
             getInfo: (force = false) =>{ // 兼容
                 if (!force){
                     let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
@@ -81,7 +116,7 @@ export const pickMethods = {
                 return i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
             },
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
-            kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
+            kickGroupMember: (add_to_member_blacklist = false) => i.bot.sdk.kickGroupMembers(i.group_id, [i.user_id], add_to_member_blacklist),
             getAvatarUrl: size => this.getAvatarUrl(id, i.user_id, size ?? 0),
             muteGroupMember: (seconds) => {
                 Bot.makeLog(
@@ -162,6 +197,10 @@ export const pickMethods = {
         }
         return {
             ...i,
+            // Bot权限判断（icqq兼容）：官方群管API服务端会校验真实权限，这里读缓存用于前置判断，
+            // 过期/未预热时后台刷新，本次用旧值，最坏首条命令误判、第二条恢复
+            get is_owner() { return getCachedBotRole(id, i.group_id) === "owner" },
+            get is_admin() { return ["admin", "owner"].includes(getCachedBotRole(id, i.group_id)) },
             sendMsg: msg => this.sendGroupMsg(i, msg),
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
             getInfo: (force = false) => {
@@ -186,7 +225,17 @@ export const pickMethods = {
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
-                i.bot.sdk.kickGroupMember(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+                i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+            },
+            // icqq 兼容：group.kickMember(qq, 拉黑)
+            kickMember: (user_id, add_to_member_blacklist = false) => {
+                Bot.makeLog(
+                    "info",
+                    `踢出群成员：`,
+                    `${i.self_id} => ${i.group_id}, ${user_id}${add_to_member_blacklist ? "（同时拉黑）" : ""}`,
+                    true,
+                )
+                return i.bot.sdk.kickGroupMembers(i.group_id, [user_id.replace(`${id}${this.sep}`, "")], add_to_member_blacklist)
             },
             muteGroupMember: (user_id, seconds) => {
                 Bot.makeLog(
@@ -426,6 +475,9 @@ export const pickMethods = {
 
         data.group_data = group_data || {}
         data.group_name = group_data?.group_name || ""
+
+        // 预热Bot群内角色缓存（TTL内仅一次API调用），供群管命令的 group.is_admin/is_owner 前置判断
+        this.getBotRole(data.self_id, event.group_id)?.catch?.(() => {})
 
         Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
