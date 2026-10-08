@@ -31,3 +31,15 @@ Object.assign(
 )
 
 export const adapter = new QQBotAdapter()
+
+// 标准化头像获取全局入口：插件可直接 Bot.getAvatarUrl(self_id, user_id, size)。
+// QQBot 平台用户无QQ号只有OpenID，走适配器的 qqapp 头像接口；其他平台回退 qlogo
+if (typeof Bot.getAvatarUrl !== "function") {
+    Bot.getAvatarUrl = (self_id, user_id, size = 100) => {
+        if (Bot[self_id]?.adapter === adapter)
+            return adapter.getAvatarUrl(self_id, user_id, size)
+        user_id = String(user_id ?? "")
+        const id = self_id ? user_id.replace(`${self_id}:`, "") : user_id
+        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}`
+    }
+}

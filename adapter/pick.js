@@ -17,6 +17,19 @@ export const pickMethods = {
         );
     },
 
+    // 标准化用户头像获取：官方Bot平台用户只有OpenID（32位十六进制），没有QQ号，
+    // 需走 qqapp 头像接口 https://q.qlogo.cn/qqapp/{appid}/{openid}/{size}（size 支持 0/100/640，0 为原图）。
+    // 真实QQ号（非OpenID格式）回退标准 qlogo 接口。user_id 支持裸ID或 "self_id:ID" 复合格式
+    getAvatarUrl(self_id, user_id, size = 100) {
+        user_id = String(user_id ?? "")
+        const id = self_id ? user_id.replace(`${self_id}${this.sep}`, "") : user_id
+        if (/^[0-9A-F]{32}$/i.test(id)) {
+            const appid = Bot[self_id]?.info?.appid
+            if (appid) return `https://q.qlogo.cn/qqapp/${appid}/${id}/${size}`
+        }
+        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}`
+    },
+
     pickFriend(id, user_id) {
         if (typeof user_id !== "string")
             user_id = String(user_id)
@@ -37,7 +50,7 @@ export const pickMethods = {
                 let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
                 return data
             },
-            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
+            getAvatarUrl: size => this.getAvatarUrl(id, i.user_id, size ?? 0),
         }
     },
 
@@ -69,7 +82,7 @@ export const pickMethods = {
             },
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
-            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
+            getAvatarUrl: size => this.getAvatarUrl(id, i.user_id, size ?? 0),
             muteGroupMember: (seconds) => {
                 Bot.makeLog(
                     "info",
