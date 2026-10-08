@@ -125,6 +125,9 @@ export const pickMethods = {
                     `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
+                // 0秒=解禁，走del操作
+                if (seconds !== undefined && seconds <= 0)
+                    return i.bot.sdk.muteGroupMember(i.group_id, "del", [i.user_id]);
                 if (seconds === undefined) {
                     seconds = 120;
                 }
@@ -147,6 +150,9 @@ export const pickMethods = {
                     `${i.self_id} => ${i.group_id}, ${i.user_id}`,
                     true,
                 )
+                // 0秒=解禁，走del操作
+                if (seconds !== undefined && seconds <= 0)
+                    return i.bot.sdk.muteGroupMember(i.group_id, "del", [i.user_id]);
                 if (seconds === undefined) {
                     seconds = 120;
                 }
@@ -244,6 +250,9 @@ export const pickMethods = {
                     `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
+                // 0秒=解禁，走del操作（icqq语义：muteMember(qq, 0)为解除禁言）
+                if (seconds !== undefined && seconds <= 0)
+                    return i.bot.sdk.muteGroupMember(i.group_id, "del", [user_id.replace(`${id}${this.sep}`, "")]);
                 if (seconds === undefined) {
                     seconds = 120;
                 }
@@ -266,6 +275,9 @@ export const pickMethods = {
                     `${i.self_id} => ${i.group_id}, ${user_id}`,
                     true,
                 )
+                // 0秒=解禁，走del操作（icqq语义：muteMember(qq, 0)为解除禁言）
+                if (seconds !== undefined && seconds <= 0)
+                    return i.bot.sdk.muteGroupMember(i.group_id, "del", [user_id.replace(`${id}${this.sep}`, "")]);
                 if (seconds === undefined) {
                     seconds = 120;
                 }
@@ -288,6 +300,9 @@ export const pickMethods = {
                     `${i.self_id} => ${i.group_id}, ${userlist.join("、")}`,
                     true,
                 )
+                // 0秒=解禁，走del操作
+                if (seconds !== undefined && seconds <= 0)
+                    return i.bot.sdk.muteGroupMember(i.group_id, "del", userlist.map(item => item.replace(`${id}${this.sep}`, "")));
                 if (seconds === undefined) {
                     seconds = 120;
                 }
