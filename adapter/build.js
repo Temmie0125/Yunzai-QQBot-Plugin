@@ -76,6 +76,14 @@ export const buildMethods = {
         return text//.replace(/@/g, "@​")
     },
 
+    // 官方Markdown中图片为行内元素，与文字/@拼接后会排在同一行；
+    // OneBot等实现的多元素消息中图片独立成行，此处补换行对齐多平台表现。
+    // br 为该模式的换行符：raw markdown 用 \n，自定义模板用 \r
+    imgLineBreak(content, br = "\n") {
+        if (!content || content.endsWith("\n") || content.endsWith("\r")) return content
+        return content + br
+    },
+
     async makeBotImage(file) {
         if (config.toBotUpload) {
             if (!this._uploadImageBot) {
@@ -273,7 +281,7 @@ export const buildMethods = {
 
             if (i.type === "image" && imageResults[imageIndex]) {
                 const { des, url } = imageResults[imageIndex]
-                content += `${des}${url}`
+                content = this.imgLineBreak(content) + `${des}${url}\n`
                 imageIndex++
                 continue
             }
@@ -498,7 +506,7 @@ export const buildMethods = {
 
             if (i.type === "image" && imageResults[imageIndex]) {
                 const { des, url } = imageResults[imageIndex]
-                content += `${des}${url}`
+                content = this.imgLineBreak(content, "\r") + `${des}${url}\r`
                 imageIndex++
                 continue
             }
