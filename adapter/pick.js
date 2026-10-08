@@ -75,19 +75,27 @@ export const pickMethods = {
     },
 
     // 从本地消息存储按message_id查回完整消息（引用撤回、获取引用内容等）
+    // 成员消息存 wind-msg；Bot自身消息存 wind-bot-msg，且群聊以裸群openid为键，与成员存储的复合键不同
     async getStoredMsg(type, key, message_id) {
         if (!message_id) return null
-        try {
-            const items = await redis.zRange(`wind-msg:${type}:${key}`, 0, -1)
-            for (let i = items.length - 1; i >= 0; i--) {
-                let m = items[i]
-                if (typeof m === "string") {
-                    try { m = JSON.parse(m) } catch { continue }
+        const keys = [key]
+        if (String(key).includes(this.sep))
+            keys.push(String(key).slice(String(key).indexOf(this.sep) + 1))
+        for (const prefix of ["wind-msg", "wind-bot-msg"]) {
+            for (const k of keys) {
+                try {
+                    const items = await redis.zRange(`${prefix}:${type}:${k}`, 0, -1)
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        let m = items[i]
+                        if (typeof m === "string") {
+                            try { m = JSON.parse(m) } catch { continue }
+                        }
+                        if (m?.message_id === message_id) return m
+                    }
+                } catch (err) {
+                    Bot.makeLog("debug", ["查询本地消息失败", err], String(k))
                 }
-                if (m?.message_id === message_id) return m
             }
-        } catch (err) {
-            Bot.makeLog("debug", ["查询本地消息失败", err], String(key))
         }
         return null
     },
