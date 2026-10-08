@@ -372,6 +372,13 @@ export const pickMethods = {
 
         data.platform = "QQ-private"
 
+        // 记录被动回复锚点：sendFile 等不经过事件对象的发送通道由 fixPassiveSource 回退使用
+        ;(data.bot._passiveAnchor ||= {})[`user:${event.sender.user_id}`] = {
+            id: data.message_id,
+            event_id: data.event_id,
+            time: Date.now(),
+        }
+
         data.reply = msg => this.sendFriendMsg({
             ...data, user_id: event.sender.user_id,
         }, msg, { id: data.message_id, event_id: data.event_id })
@@ -460,6 +467,13 @@ export const pickMethods = {
             }
 
         data.platform = "QQ-group"
+
+        // 记录被动回复锚点：sendFile 等不经过事件对象的发送通道由 fixPassiveSource 回退使用
+        ;(data.bot._passiveAnchor ||= {})[`group:${event.group_id}`] = {
+            id: data.message_id,
+            event_id: data.event_id,
+            time: Date.now(),
+        }
 
         data.reply = msg => this.sendGroupMsg({
             ...data, group_id: event.group_id,

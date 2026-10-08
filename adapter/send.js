@@ -3,6 +3,17 @@ import { config } from "./context.js"
 import { saveSentMessage } from "../lib/message.js"
 
 export const sendMethods = {
+    // QQ官方Bot群聊默认无主动消息权限，媒体/文件消息必须携带被动回复凭证(msg_id/event_id)。
+    // sendFile 等通道不经过事件对象，这里回退使用该群/用户最近一条收到的消息作为被动回复锚点
+    // （被动回复有效期5分钟，留30秒余量）
+    fixPassiveSource(data, event, type, openid) {
+        if (event?.id || event?.event_id) return event
+        const anchor = data.bot?._passiveAnchor?.[`${type}:${openid}`]
+        if (anchor?.id && Date.now() - anchor.time < 270000)
+            return { ...event, id: anchor.id, event_id: anchor.event_id }
+        return event
+    },
+
     async sendMsg(data, send, msg) {
         const rets = { message_id: [], data: [], error: [] }
         let msgs
@@ -66,7 +77,7 @@ export const sendMethods = {
     },
 
     sendFriendMsg(data, msg, event) {
-        if (data.smallbtn) event.smallbtn = true
+        event = this.fixPassiveSource(data, event, "user", data.user_id)
         return this.sendMsg(data, msg => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
             return data.bot.sdk.sendPrivateMessage(data.user_id, msg, event, { stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
@@ -74,6 +85,7 @@ export const sendMethods = {
     },
 
     sendGroupMsg(data, msg, event) {
+        event = this.fixPassiveSource(data, event, "group", data.group_id)
         return this.sendMsg(data, msg => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
             return data.bot.sdk.sendGroupMessage(data.group_id, msg, event)
