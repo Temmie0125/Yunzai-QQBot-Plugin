@@ -90,7 +90,12 @@ export const pickMethods = {
                         if (typeof m === "string") {
                             try { m = JSON.parse(m) } catch { continue }
                         }
-                        if (m?.message_id === message_id) return m
+                        if (m?.message_id === message_id) {
+                            // 兼容历史数据：sendSentMessage 曾把段数组双重嵌套为 [[seg,...]]
+                            if (Array.isArray(m.message) && m.message.length === 1 && Array.isArray(m.message[0]))
+                                m.message = m.message[0]
+                            return m
+                        }
                     }
                 } catch (err) {
                     Bot.makeLog("debug", ["查询本地消息失败", err], String(k))
@@ -102,19 +107,41 @@ export const pickMethods = {
 
     // 按内容从新到旧匹配本地存储消息（引用换算兜底）：
     // 成员消息的ref_msg_idx与其自身msg_idx是不同密文无法按键索引，
-    // 但引用元素(type 103)携带被引用消息的content，据此匹配最近一条相同内容的通知
+    // 但引用元素(type 103)携带被引用消息的content，据此匹配最近一条相同内容的通知。
+    // bot自身消息在 wind-bot-msg（群聊用裸群openid键），引用bot消息时同样需要覆盖；
+    // 图片等无文本引用（content为空或占位符）无法按内容匹配，退化为取该会话最近一条带图消息
     async findStoredMsgIdByContent(type, key, content) {
-        if (!content) return ""
         try {
-            const items = await redis.zRange(`wind-msg:${type}:${key}`, -200, -1)
-            for (let i = items.length - 1; i >= 0; i--) {
-                let m = items[i]
-                if (typeof m === "string") {
-                    try { m = JSON.parse(m) } catch { continue }
+            const keys = [key]
+            if (String(key).includes(this.sep))
+                keys.push(String(key).slice(String(key).indexOf(this.sep) + 1))
+            const placeholders = new Set(["", "[图片]", "[image]", "[动画表情]", "[文件]"])
+            const byContent = content && !placeholders.has(content)
+            for (const prefix of ["wind-msg", "wind-bot-msg"]) {
+                for (const k of keys) {
+                    let items
+                    try {
+                        items = await redis.zRange(`${prefix}:${type}:${k}`, -200, -1)
+                    } catch (err) {
+                        continue
+                    }
+                    let imageFallback = ""
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        let m = items[i]
+                        if (typeof m === "string") {
+                            try { m = JSON.parse(m) } catch { continue }
+                        }
+                        if (!m?.message_id || m.recalled) continue
+                        if (byContent) {
+                            const rm = String(m.raw_message || "").trim()
+                            if (rm === content) return m.message_id
+                        } else if (!imageFallback && Array.isArray(m.message)) {
+                            const segs = m.message.length === 1 && Array.isArray(m.message[0]) ? m.message[0] : m.message
+                            if (segs.some?.(s => s?.type === "image")) imageFallback = m.message_id
+                        }
+                    }
+                    if (!byContent && imageFallback) return imageFallback
                 }
-                if (!m?.message_id || m.recalled) continue
-                const rm = String(m.raw_message || "").trim()
-                if (rm === content) return m.message_id
             }
         } catch (err) {
             Bot.makeLog("debug", ["按内容匹配引用消息失败", err], String(key))
@@ -126,10 +153,10 @@ export const pickMethods = {
     async resolveRefMessage(data) {
         try {
             let refId = await this.getRefMessageId(data.ref_msg_idx)
-            if (!refId && data.ref_msg_idx) {
+            const quoteEl = Array.isArray(data.msg_elements)
+                && data.msg_elements.find(e => e?.message_type === 103 && typeof e.content === "string")
+            if (!refId && (data.ref_msg_idx || quoteEl)) {
                 // 键索引未命中：用引用元素携带的被引用内容做兜底匹配
-                const quoteEl = Array.isArray(data.msg_elements)
-                    && data.msg_elements.find(e => e?.message_type === 103 && typeof e.content === "string")
                 if (quoteEl) {
                     const key = data.group_id || data.user_id
                     const msgType = data.group_id ? "group" : "private"
