@@ -45,7 +45,7 @@ export class QQBotBlacklist extends plugin {
         let targetUnionid = ""
         if (e.self_id) {
             const bot = Bot[e.self_id]
-            const user = bot?.fl?.get(`${e.self_id}${this.sep}${targetOpenid}`) || bot?.fl?.get(targetOpenid)
+            const user = bot?.fl?.get(`${e.self_id}${this.sep}${targetOpenid}`) || bot?.fl?.get(targetOpenid) || bot?.users?.get(`${e.self_id}${this.sep}${targetOpenid}`)
             if (user?.unionid) targetUnionid = user.unionid
         }
         await blacklistUser(`${e.self_id}${this.sep}${targetOpenid}`, targetUnionid)
@@ -65,7 +65,7 @@ export class QQBotBlacklist extends plugin {
         let targetUnionid = ""
         if (e.self_id) {
             const bot = Bot[e.self_id]
-            const user = bot?.fl?.get(`${e.self_id}${this.sep}${targetOpenid}`) || bot?.fl?.get(targetOpenid)
+            const user = bot?.fl?.get(`${e.self_id}${this.sep}${targetOpenid}`) || bot?.fl?.get(targetOpenid) || bot?.users?.get(`${e.self_id}${this.sep}${targetOpenid}`)
             if (user?.unionid) targetUnionid = user.unionid
         }
         await unblacklistUser(`${e.self_id}${this.sep}${targetOpenid}`, targetUnionid)

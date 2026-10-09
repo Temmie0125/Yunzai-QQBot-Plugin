@@ -9,6 +9,10 @@ export const connectMethods = {
         return Bot.getMap(`${this.path}${id}/Friend`)
     },
 
+    getUserMap(id) {
+        return Bot.getMap(`${this.path}${id}/User`)
+    },
+
     getGroupMap(id) {
         return Bot.getMap(`${this.path}${id}/Group`)
     },
@@ -72,6 +76,9 @@ export const connectMethods = {
             get pickUser() { return this.pickFriend },
             getFriendMap() { return this.fl },
             fl: await this.getFriendMap(id),
+
+            // 用户资料缓存（非好友表）：群成员/退群成员资料兜底，见 pick.js setUserMap
+            users: await this.getUserMap(id),
 
             pickMember: (group_id, user_id) => this.pickMember(id, group_id, user_id),
             pickGroup: group_id => this.pickGroup(id, group_id),
@@ -146,7 +153,61 @@ export const connectMethods = {
 
         Bot.makeLog("mark", `${this.name}(${this.id}) ${this.version} ${Bot[id].nickname} 已连接`, id)
         Bot.em(`connect.${id}`, { self_id: id })
+
+        // 历史版本把所有@过机器人的群成员写进了好友表，启动时清理一次（幂等）
+        this.cleanFriendMap(id).catch(err => Bot.makeLog("warn", ["好友表清理失败", err], id))
         return true
+    },
+
+    // 好友表清理：官方Bot没有好友列表API，fl全靠事件积累，历史版本把所有触发过命令的
+    // 群成员都写进了fl，导致好友数虚高。真实好友的证据：fl条目带friend标记（好友事件写入）
+    // 或存在C2C私聊记录（消息存储/活跃列表/推送开关）。无证据条目将资料合并进users缓存后
+    // 从fl移除，不丢资料；若确是"添加后从未发言"的好友，收到任意推送(C2C发送成功)或发来
+    // 消息时会自动回到好友表
+    async cleanFriendMap(id) {
+        const bot = Bot[id]
+        if (!bot?.fl?.size) return
+        let kept = 0, moved = 0
+        for (const [key, info] of [...bot.fl]) {
+            // 仅清理群Bot复合ID条目；qg_频道等其它键保持原语义
+            if (!String(key).startsWith(`${id}${this.sep}`)) continue
+            if (info?.friend || await this.hasC2CEvidence(id, key)) {
+                kept++
+                continue
+            }
+            if (info && bot.users)
+                await bot.users.set(key, { ...bot.users.get(key), ...info, user_id: key })
+            await bot.fl.delete(key)
+            moved++
+            Bot.makeLog("info", [`好友表清理：移除非好友条目 [${info?.nickname || ""}(${key})]（历史群成员误记，资料已转入用户缓存）`], id)
+        }
+        if (moved)
+            Bot.makeLog("mark", logger.green(`好友表清理完成：移除 ${moved} 个非好友条目，保留 ${kept} 个好友`), id)
+        else
+            Bot.makeLog("debug", [`好友表无需清理：${kept} 个好友`], id)
+    },
+
+    // 是否存在该用户的C2C私聊记录（受消息保存天数限制，仅作历史脏数据的判据之一）
+    async hasC2CEvidence(id, key) {
+        try {
+            if (Bot.storageBackend === "sqlite") {
+                if (Bot.MessageDB) {
+                    const rows = await Bot.MessageDB.getByPrivate(key, 0, 1)
+                    if (rows?.length) return true
+                }
+                return false
+            }
+            const [recv, sent, active, push] = await Promise.all([
+                redis.exists(`wind-msg:private:${key}`),
+                redis.exists(`wind-bot-msg:private:${key}`),
+                redis.zScore(`wind-active-private:${id}`, key),
+                redis.sIsMember(`wind-disable-push-users:${id}`, key),
+            ])
+            return !!(recv || sent || active || push)
+        } catch (err) {
+            Bot.makeLog("warn", ["好友表清理证据检查失败，保守保留", key, err], id)
+            return true
+        }
     },
 
     async makeWebHookSign(id, req, secret) {

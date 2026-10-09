@@ -584,6 +584,8 @@ export const pickMethods = {
         data.sendInputNotify = input_second => data.bot.sdk.sendFriendInputNotify(data.openid, 1, input_second || 30, data.message_id)
 
         await this.setFriendMap(data)
+        // 好友资料同步进用户缓存，好友删除后仍可查昵称头像
+        await this.setUserMap(data)
     },
 
     async makeGroupMessage(data, event) {
@@ -687,13 +689,10 @@ export const pickMethods = {
         data.getGenerateUrl = callback_data => data.bot.sdk.getGenerateUrl(callback_data)
 
         await this.setGroupMap(data)
-        let fldata = {
-            bot: data.bot,
-            user_id: data.user_id,
-            sender: JSON.parse(JSON.stringify(data.sender))
-        }
-        delete fldata.sender.role
-        await this.setFriendMap(fldata)
+        // 群消息发送者不是好友：官方Bot只有用户主动添加(C2C)才算好友，没有临时会话机制。
+        // 写入fl会让yenai/状态面板把所有@过机器人的成员都算成好友（好友数虚高），
+        // 这里只更新用户资料缓存users（退群后gml被删，仍可查昵称头像）
+        await this.setUserMap({ bot: data.bot, user_id: data.user_id, sender: data.sender })
     },
 
     async makeDirectMessage(data, event) {
@@ -757,6 +756,20 @@ export const pickMethods = {
         await data.bot.fl.set(data.user_id, {
             ...data.bot.fl.get(data.user_id),
             ...data.sender,
+            // 好友标记：所有进好友表的路径都是真实好友事件（C2C消息/好友按钮/FRIEND_ADD/C2C发送成功），
+            // 启动清理时凭此保留，避免"添加后从未发言"的好友被当作群成员误清
+            friend: true,
+        })
+    },
+
+    // 用户资料缓存：记录所有交互过用户的资料（含退群成员与历史群成员），
+    // 供退群提示、面板昵称头像等兜底查询；与fl(真实好友)分离，不影响好友计数
+    async setUserMap(data) {
+        if (!data.user_id) return
+        await data.bot.users?.set(data.user_id, {
+            ...data.bot.users?.get(data.user_id),
+            ...data.sender,
+            user_id: data.user_id,
         })
     },
 

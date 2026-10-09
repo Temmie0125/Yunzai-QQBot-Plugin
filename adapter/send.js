@@ -81,7 +81,26 @@ export const sendMethods = {
         return this.sendMsg(data, msg => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
             return data.bot.sdk.sendPrivateMessage(data.user_id, msg, event, { stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
-        }, msg)
+        }, msg).then(rets => {
+            // C2C主动消息发送成功即确认好友关系（对非好友会发送失败）：
+            // "添加后从未发言、无任何私聊记录"的好友在收到推送时自动回到好友表
+            if (rets.data?.length && data.user_id) {
+                const openid = String(data.user_id).replace(`${data.self_id}${this.sep}`, "")
+                const user_id = `${data.self_id}${this.sep}${openid}`
+                this.setFriendMap({
+                    bot: data.bot,
+                    user_id,
+                    sender: {
+                        ...data.sender,
+                        user_id,
+                        nickname: data.sender?.nickname || data.nickname || "",
+                        avatar: data.sender?.avatar || data.avatar || `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${openid}/0`,
+                        openid: data.sender?.openid || data.openid || openid,
+                    },
+                }).catch(() => {})
+            }
+            return rets
+        })
     },
 
     sendGroupMsg(data, msg, event) {

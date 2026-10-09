@@ -189,6 +189,7 @@ export const messageMethods = {
 
                 data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
                 await this.setGroupMap(data)
+                await this.setUserMap(data)
                 break
             case "guild":
                 break
@@ -287,7 +288,12 @@ export const messageMethods = {
             case "action":
                 return this.makeCallback(id, event)
             case "increase": {
-                if (data.notice_type !== "guild") {
+                if (data.notice_type === "friend") {
+                    // 好友添加事件(FRIEND_ADD)：进好友表。官方Bot无好友列表API，好友表只能靠事件维护，
+                    // friend标记保证"添加后从未发言"的好友不被启动清理误删
+                    await this.setFriendMap(data)
+                    if (Bot.autoRecordMessage === true) saveNotice(data)
+                } else if (data.notice_type !== "guild") {
                     data.sender = {
                         user_id: data.user_id,
                         openid: data.openid,
@@ -301,7 +307,14 @@ export const messageMethods = {
                 break
             }
             case "decrease": {
-                if (data.notice_type !== "guild") {
+                if (data.notice_type === "friend") {
+                    // 好友删除事件(FRIEND_DEL)：从好友表移除
+                    await data.bot.fl.delete(data.user_id)
+                    if (Bot.autoRecordMessage === true) saveNotice(data)
+                } else if (data.notice_type !== "guild") {
+                    // 成员退群：资料先转入users缓存保留（gml即将删除该成员），
+                    // yenai退群提示等仍能取到昵称头像
+                    await this.setUserMap(data)
                     this.delGroupMember(data)
                     if (Bot.autoRecordMessage === true) saveNotice(data)
                 }
