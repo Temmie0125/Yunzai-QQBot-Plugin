@@ -106,11 +106,15 @@ export const pickMethods = {
     },
 
     // 按内容从新到旧匹配本地存储消息（引用换算兜底）：
-    // 成员消息的ref_msg_idx与其自身msg_idx是不同密文无法按键索引，
+    // 成员消息的ref_msg_idx与其自身msg_idx可能是不同密文无法按键索引，
     // 但引用元素(type 103)携带被引用消息的content，据此匹配最近一条相同内容的通知。
+    // 官方引用元素的content是原始content格式（如表情包的 <faceType=6,...> 标记），
+    // 与SDK渲染的raw_message（<face,...><image,...>）不同，需同时比对原始事件d.content。
+    // fileId/fileName：引用元素attachments携带的图片标识，优先精确匹配同一张图
+    // （rkey轮换导致URL不同，只能比对fileid/文件名）。
     // bot自身消息在 wind-bot-msg（群聊用裸群openid键），引用bot消息时同样需要覆盖；
     // 图片等无文本引用（content为空或占位符）无法按内容匹配，退化为取该会话最近一条带图消息
-    async findStoredMsgIdByContent(type, key, content) {
+    async findStoredMsgIdByContent(type, key, content, fileId = "", fileName = "") {
         try {
             const keys = [key]
             if (String(key).includes(this.sep))
@@ -134,10 +138,18 @@ export const pickMethods = {
                         if (!m?.message_id || m.recalled) continue
                         if (byContent) {
                             const rm = String(m.raw_message || "").trim()
-                            if (rm === content) return m.message_id
-                        } else if (!imageFallback && Array.isArray(m.message)) {
+                            const dc = String(m.raw_event?.d?.content || "").trim()
+                            if (rm === content || (dc && dc === content)) return m.message_id
+                        }
+                        if (!imageFallback && Array.isArray(m.message)) {
                             const segs = m.message.length === 1 && Array.isArray(m.message[0]) ? m.message[0] : m.message
-                            if (segs.some?.(s => s?.type === "image")) imageFallback = m.message_id
+                            const images = (segs.filter?.(s => s?.type === "image")) || []
+                            if (!images.length) continue
+                            if (fileId && images.some(s =>
+                                [s.url, s.file].some(v => typeof v === "string" && v.includes(`fileid=${fileId}`))
+                            )) return m.message_id
+                            if (fileName && images.some(s => s.name === fileName)) return m.message_id
+                            imageFallback = m.message_id
                         }
                     }
                     if (!byContent && imageFallback) return imageFallback
@@ -153,18 +165,31 @@ export const pickMethods = {
     async resolveRefMessage(data) {
         try {
             let refId = await this.getRefMessageId(data.ref_msg_idx)
-            const quoteEl = Array.isArray(data.msg_elements)
-                && data.msg_elements.find(e => e?.message_type === 103 && typeof e.content === "string")
+            if (refId) data.ref_resolved_by = "idx"
+            // 官方文档 message_type=103 时msg_elements[0]为被引用消息快照；
+            // 实际事件中元素可能缺失message_type字段（群聊引用示例），按内容/附件识别兜底
+            const elements = Array.isArray(data.msg_elements) ? data.msg_elements : []
+            const quoteEl = elements.find(e => e?.message_type === 103)
+                || elements.find(e => typeof e?.content === "string" || Array.isArray(e?.attachments))
             if (!refId && (data.ref_msg_idx || quoteEl)) {
-                // 键索引未命中：用引用元素携带的被引用内容做兜底匹配
+                // 键索引未命中：用引用元素携带的被引用内容/图片做兜底匹配
                 if (quoteEl) {
                     const key = data.group_id || data.user_id
                     const msgType = data.group_id ? "group" : "private"
-                    refId = await this.findStoredMsgIdByContent(msgType, key, quoteEl.content.trim())
+                    // 引用元素attachments携带被引用图片：rkey轮换导致URL每次不同，取fileid/文件名做精确匹配
+                    const att = (quoteEl.attachments || []).find(a => String(a.content_type || "").startsWith("image/"))
+                    const fileId = att ? (String(att.url || "").match(/fileid=([^&]+)/)?.[1] || "") : ""
+                    const fileName = att?.filename || ""
+                    refId = await this.findStoredMsgIdByContent(msgType, key, String(quoteEl.content || "").trim(), fileId, fileName)
+                    if (refId) {
+                        data.ref_resolved_by = "content"
+                        Bot.makeLog("mark", [`引用消息键索引未命中，已按引用内容兜底匹配到本地消息 ${String(refId).slice(0, 50)}...`], data.self_id)
+                    }
                 }
             }
             if (!refId) {
                 if (data.ref_msg_idx) data.reply_unresolved = true
+                else if (quoteEl) Bot.makeLog("debug", ["引用元素缺少ref_msg_idx且未命中本地消息", quoteEl.content || ""], data.self_id)
                 return
             }
             if (Array.isArray(data.message))
@@ -173,6 +198,19 @@ export const pickMethods = {
         } catch (err) {
             Bot.makeLog("debug", ["解析引用消息失败", err], data.self_id)
         }
+    },
+
+    // 日志用引用前缀（对齐OneBotv11 raw_message以CQ:reply开头的惯例）：
+    // 消息含引用时在正文前缀 [引用消息:被引用内容概要]，未能换算出被引用ID时再补 [未换算]，
+    // 否则从日志无法看出该条消息是否包含引用回复
+    quoteLogPrefix(data) {
+        const el = Array.isArray(data.msg_elements) ? data.msg_elements[0] : null
+        if (!data.ref_msg_idx && !el) return ""
+        let quoted = String(el?.content ?? "").replace(/\s+/g, " ").trim()
+        if (quoted.length > 50) quoted = quoted.slice(0, 50) + "…"
+        let prefix = `[引用消息:${quoted || (el?.attachments?.length ? "[附件]" : "无内容")}]`
+        if (data.reply_unresolved) prefix += "[未换算]"
+        return `${prefix} `
     },
 
     pickFriend(id, user_id) {
@@ -544,8 +582,6 @@ export const pickMethods = {
             unionid: event.author?.union_openid || user?.unionid || "",
             openid: event.sender?.user_id || user?.openid || "",
         }
-        Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
-
         for (const item of event.message_scene.ext) {
             const eqIndex = item.indexOf("=")
             if (eqIndex === -1) {
@@ -566,10 +602,11 @@ export const pickMethods = {
 
         data.platform = "QQ-private"
 
-        // 引用消息：换算被引用消息ID并注入reply段
+        // 引用消息：换算被引用消息ID并注入reply段（日志在换算后打，才带得上引用前缀）
         await this.resolveRefMessage(data)
 
-        // 记录被动回复锚点：sendFile 等不经过事件对象的发送通道由 fixPassiveSource 回退使用
+        Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${this.quoteLogPrefix(data)}${data.raw_message}`, data.self_id)
+
         ;(data.bot._passiveAnchor ||= {})[`user:${event.sender.user_id}`] = {
             id: data.message_id,
             event_id: data.event_id,
@@ -616,8 +653,6 @@ export const pickMethods = {
         // 预热Bot群内角色缓存（TTL内仅一次API调用），供群管命令的 group.is_admin/is_owner 前置判断
         this.getBotRole(data.self_id, event.group_id)?.catch?.(() => {})
 
-        Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
-
         for (const item of event.message_scene.ext) {
             const eqIndex = item.indexOf("=")
             if (eqIndex === -1) {
@@ -640,8 +675,10 @@ export const pickMethods = {
 
         data.mentions = event.mentions || []
 
-        // 引用消息：换算被引用消息ID并注入reply段
+        // 引用消息：换算被引用消息ID并注入reply段（日志在换算后打，才带得上引用前缀）
         await this.resolveRefMessage(data)
+
+        Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${this.quoteLogPrefix(data)}${data.raw_message}`, data.self_id)
 
         const atUser = data.mentions.find(m => !m.bot) ?? data.mentions.at(-1) ?? null;
 
