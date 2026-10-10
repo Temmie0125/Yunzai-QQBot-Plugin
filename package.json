@@ -3,7 +3,7 @@
   "type": "module",
   "author": "TimeRainStarSky",
   "dependencies": {
-    "@windtrace/qq-group-bot": "1.0.39",
+    "@windtrace/qq-group-bot": "github:Temmie0125/qq-group-bot#v1.0.39-patched",
     "qrcode": "^1.5.4",
     "sharp": "^0.33.5",
     "silk-wasm": "^3.6.3",
