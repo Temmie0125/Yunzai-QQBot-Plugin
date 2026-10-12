@@ -42,10 +42,16 @@ export const sendMethods = {
 
         let messages = Array.isArray(msg) ? msg : [msg]
 
-        if (config.markdown[data.self_id] === "legacy") {
+        const mdMode = config.markdown[data.self_id]
+        const forcePlain = data.legacy || (messages.length === 1 && messages[0].type === "image" && data.event_id?.startsWith("INTERACTION_CREATE"))
+        if (mdMode === "legacy" || forcePlain) {
+            msgs = await this.makeMsg(data, msg)
+        } else if (mdMode === "auto" && this.isPlainMsg(data, msg)) {
+            // 智能判定：纯文本按原生消息发送，特殊字符不再被QQ当作markdown渲染；
+            // 含@/图片/按钮/显式segment.markdown等特殊内容时仍走markdown
             msgs = await this.makeMsg(data, msg)
         } else {
-            msgs = data.legacy || (messages.length === 1 && messages[0].type === "image" && data.event_id?.startsWith("INTERACTION_CREATE")) ? await this.makeMsg(data, msg) : await this.makeRawMarkdownMsg(data, msg)
+            msgs = await this.makeRawMarkdownMsg(data, msg)
         }
 
         let pending = await sendMsg(msgs)
@@ -55,7 +61,10 @@ export const sendMethods = {
 
             if (pending.length > 0) {
                 // 第三次：切换格式，重建全部消息再发
-                if (config.markdown[data.self_id] && config.markdown[data.self_id] !== "legacy" && config.markdown[data.self_id] !== "raw") {
+                if (config.markdown[data.self_id] === "auto") {
+                    // 智能判定模式：换markdown格式重试（纯文本可能超出msg_type 0长度上限等）
+                    msgs = await this.makeRawMarkdownMsg(data, msg)
+                } else if (config.markdown[data.self_id] && config.markdown[data.self_id] !== "legacy" && config.markdown[data.self_id] !== "raw") {
                     msgs = typeof Bot.makeMarkdownMsg === "function" ? await Bot.makeMarkdownMsg(data, msg) : await this.makeMarkdownMsg(data, msg)
                 } else {
                     msgs = await this.makeMsg(data, msg)

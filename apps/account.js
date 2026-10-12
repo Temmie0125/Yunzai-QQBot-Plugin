@@ -80,15 +80,15 @@ export class QQBotAccount extends plugin {
 
     async Markdown() {
         let token = this.e.msg.replace(/^#[Qq]+[Bb]ot[Mm](ark)?[Dd](own)?/, "").trim().split(":")
-        if (token.length < 2) return this.reply("添加错误,格式如下\r#QQBotMD机器人qq号:模板id(原生就填raw,普通就填legacy):模板参数内容(每个参数用,隔开)\r例:#QQBotMD285888888:1909831031_980983013:text0,text1,text2...,原生则为#QQBotMD285888888:raw,普通则为#QQBotMD285888888:legacy")
+        if (token.length < 2) return this.reply("添加错误,格式如下\r#QQBotMD机器人qq号:模式(原生填raw,纯文本填legacy,智能判定填auto,模板填模板id):模板参数内容(每个参数用,隔开)\r例:#QQBotMD285888888:1909831031_980983013:text0,text1,text2...,原生则为#QQBotMD285888888:raw,纯文本则为#QQBotMD285888888:legacy,智能判定则为#QQBotMD285888888:auto")
         const bot_id = token[0]
         const templateid = token[1]
-        if (token.length !== 3 && templateid !== "raw" && templateid !== "legacy") return this.reply("添加错误,格式如下\r#QQBotMD机器人qq号:模板id(原生就填raw):模板参数内容(每个参数用,隔开)\r例:#QQBotMD285888888:1909831031_980983013:text0,text1,text2...,原生则为#QQBotMD285888888:raw,普通则为#QQBotMD285888888:legacy")
+        if (token.length !== 3 && templateid !== "raw" && templateid !== "legacy" && templateid !== "auto") return this.reply("添加错误,格式如下\r#QQBotMD机器人qq号:模式(原生填raw,智能判定填auto):模板参数内容(每个参数用,隔开)\r例:#QQBotMD285888888:1909831031_980983013:text0,text1,text2...,原生则为#QQBotMD285888888:raw,智能判定则为#QQBotMD285888888:auto")
         let template = token[2] || ""
         template = template.replace(" ", "").split(/[,，]/)
-        this.reply(`Bot ${bot_id} Markdown 模板已设置为 ${templateid}\r内容为 [${template.join(",")}]`, true)
+        this.reply(`Bot ${bot_id} Markdown 模式已设置为 ${templateid}${templateid === "auto" ? "（纯文本直发，特殊内容走markdown）" : templateid === "legacy" ? "（全部纯文本）" : templateid === "raw" ? "（全部原生markdown）" : `\r内容为 [${template.join(",")}]`}`, true)
         config.markdown[bot_id] = templateid
-        if (templateid !== "raw" && templateid !== "legacy") config.template[bot_id] = template
+        if (templateid !== "raw" && templateid !== "legacy" && templateid !== "auto") config.template[bot_id] = template
         await configSave()
     }
 

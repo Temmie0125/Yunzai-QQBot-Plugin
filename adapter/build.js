@@ -744,5 +744,30 @@ export const buildMethods = {
         if (reply) for (const i of messages)
             i.unshift(reply)
         return messages
+    },
+
+    // 智能判定：消息能否安全以纯文本消息发送（msg_type 0，不经过markdown渲染，
+    // 特殊字符如 * _ [ ] 不会被QQ解析为格式）。
+    // 仅字符串与text段视为纯文本；reply/stream/small等控制段不影响判定；
+    // at/image/face/button/markdown等段需要markdown或媒体消息承载，一律走markdown；
+    // 文本内含 [文字](链接) 写法的同样按markdown发送，保留渲染意图
+    isPlainMsg(data, msg) {
+        for (let i of Array.isArray(msg) ? msg : [msg]) {
+            if (typeof i === "object")
+                i = { ...i }
+            else
+                i = { type: "text", text: Bot.String(i) }
+            switch (i.type) {
+                case "text":
+                    if (/\[[^\]\n]+\]\(\w+:\/\//.test(i.text)) return false
+                case "stream":
+                case "small":
+                case "reply":
+                    continue
+                default:
+                    return false
+            }
+        }
+        return true
     }
 }
