@@ -803,10 +803,12 @@ export const pickMethods = {
     // 供退群提示、面板昵称头像等兜底查询；与fl(真实好友)分离，不影响好友计数
     async setUserMap(data) {
         if (!data.user_id) return
+        // 空值不覆盖旧资料：退群等事件的快照可能缺昵称，直接合并会把缓存里已有的昵称/unionid清空
+        const add = { ...data.sender, user_id: data.user_id }
+        for (const k in add) if (add[k] === undefined || add[k] === "") delete add[k]
         await data.bot.users?.set(data.user_id, {
             ...data.bot.users?.get(data.user_id),
-            ...data.sender,
-            user_id: data.user_id,
+            ...add,
         })
     },
 

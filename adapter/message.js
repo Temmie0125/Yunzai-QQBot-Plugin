@@ -222,7 +222,10 @@ export const messageMethods = {
     },
 
     async makeNotice(id, event) {
-        let user = await Bot[id].fl.get(`${id}${this.sep}${event.operator_id || event.user_id}`)
+        // fl 只存真实好友：非好友事件（如群成员退群）从 users 资料缓存兜底，
+        // 否则空昵称会在退群时的 setUserMap 快照里覆盖缓存中已有的资料
+        const uid = `${id}${this.sep}${event.operator_id || event.user_id}`
+        let user = await Bot[id].fl.get(uid) ?? await Bot[id].users?.get(uid)
         let data = {
             openid: event.user_id ? event.user_id : event.operator_id,
             avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id ? event.user_id : event.operator_id}/0`,
