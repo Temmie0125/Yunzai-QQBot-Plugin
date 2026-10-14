@@ -1,5 +1,6 @@
 // pick 方法 / 构造消息对象 / 群管方法
 import { config, configSave, blacklist } from "./context.js"
+import { getMessageIdByMsgIdx, getMessageByMsgIdx } from "../lib/message.js"
 
 export const pickMethods = {
     rfc3339CN(seconds = 0) {
@@ -376,6 +377,18 @@ export const pickMethods = {
             ...data, user_id: event.sender.user_id,
         }, msg, { id: data.message_id, event_id: data.event_id })
 
+        // QQBot 没有 getMsg 接口，改为按被引用消息的 msg_idx 反查
+        // 返回值对齐 Yunzai 约定（lib/plugins/loader.js 的 e.group.getMsg）：
+        // sqlite 能取到完整消息（含 message 消息链），redis 只有 idx→id 映射，消息链退化为空数组
+        data.getReply = async () => {
+            const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
+            if (!refIdx) return
+            const full = await getMessageByMsgIdx(refIdx)
+            if (full) return full
+            const message_id = await getMessageIdByMsgIdx(refIdx)
+            return message_id ? { message_id, message: [] } : undefined
+        }
+
         data.getGenerateUrl = callback_data => data.bot.sdk.getGenerateUrl(callback_data)
         data.sendInputNotify = input_second => data.bot.sdk.sendFriendInputNotify(data.openid, 1, input_second || 30, data.message_id)
 
@@ -464,6 +477,18 @@ export const pickMethods = {
         data.reply = msg => this.sendGroupMsg({
             ...data, group_id: event.group_id,
         }, msg, { id: data.message_id })
+
+        // QQBot 没有 getMsg 接口，改为按被引用消息的 msg_idx 反查
+        // 返回值对齐 Yunzai 约定（lib/plugins/loader.js 的 e.group.getMsg）：
+        // sqlite 能取到完整消息（含 message 消息链），redis 只有 idx→id 映射，消息链退化为空数组
+        data.getReply = async () => {
+            const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
+            if (!refIdx) return
+            const full = await getMessageByMsgIdx(refIdx)
+            if (full) return full
+            const message_id = await getMessageIdByMsgIdx(refIdx)
+            return message_id ? { message_id, message: [] } : undefined
+        }
 
         if (data.raw_event?.t === "GROUP_AT_MESSAGE_CREATE") data.message.unshift({ type: "at", qq: data.self_id })
 
