@@ -174,7 +174,7 @@ export const pickMethods = {
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
-                i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+                return i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
             },
             muteGroupMember: (user_id, seconds) => {
                 Bot.makeLog(
