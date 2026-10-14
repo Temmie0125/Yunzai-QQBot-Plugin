@@ -69,7 +69,7 @@ export const pickMethods = {
                 return i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
             },
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
-            kickGroupMember: () => i.bot.sdk.kickGroupMember(i.group_id, i.user_id),
+            kickGroupMember: () => i.bot.sdk.kickGroupMembers(i.group_id, [i.user_id]),
             getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
             muteGroupMember: (seconds) => {
                 Bot.makeLog(
@@ -174,7 +174,7 @@ export const pickMethods = {
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
-                i.bot.sdk.kickGroupMember(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+                i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
             },
             muteGroupMember: (user_id, seconds) => {
                 Bot.makeLog(
