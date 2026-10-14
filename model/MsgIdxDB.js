@@ -14,6 +14,10 @@ export default class MsgIdxDB extends Model {
     return MsgIdxDB.update({ recall: 1 }, { where: { msg_idx } })
   }
 
+  static async markRecalledBymsgid(message_id) {
+    return MsgIdxDB.update({ recall: 1 }, { where: { message_id } })
+  }
+
   static async cleanExpired(saveDays) {
     const cutoff = Math.floor(Date.now() / 1000) - saveDays * 86400
     return MsgIdxDB.destroy({ where: { timestamp: { [Op.lt]: cutoff } } })

@@ -377,9 +377,6 @@ export const pickMethods = {
             ...data, user_id: event.sender.user_id,
         }, msg, { id: data.message_id, event_id: data.event_id })
 
-        // QQBot 没有 getMsg 接口，改为按被引用消息的 msg_idx 反查
-        // 返回值对齐 Yunzai 约定（lib/plugins/loader.js 的 e.group.getMsg）：
-        // sqlite 能取到完整消息（含 message 消息链），redis 只有 idx→id 映射，消息链退化为空数组
         data.getReply = async () => {
             const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
             if (!refIdx) return
@@ -478,9 +475,6 @@ export const pickMethods = {
             ...data, group_id: event.group_id,
         }, msg, { id: data.message_id })
 
-        // QQBot 没有 getMsg 接口，改为按被引用消息的 msg_idx 反查
-        // 返回值对齐 Yunzai 约定（lib/plugins/loader.js 的 e.group.getMsg）：
-        // sqlite 能取到完整消息（含 message 消息链），redis 只有 idx→id 映射，消息链退化为空数组
         data.getReply = async () => {
             const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
             if (!refIdx) return
