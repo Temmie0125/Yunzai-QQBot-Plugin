@@ -1,5 +1,6 @@
 // pick 方法 / 构造消息对象 / 群管方法
 import { config, configSave, blacklist } from "./context.js"
+import { getMessageIdByMsgIdx, getMessageByMsgIdx } from "../lib/message.js"
 
 // Bot 在各群的角色缓存（官方bot_state接口），key: `${self_id}:${group_openid}`
 // 群管命令的 group.is_admin/is_owner 判断依赖它，TTL 内复用，避免每条命令打一次API
@@ -386,7 +387,7 @@ export const pickMethods = {
             getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
-                i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
+                return i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
             },
             // icqq 兼容：group.kickMember(qq, 拉黑)
             kickMember: (user_id, add_to_member_blacklist = false) => {
@@ -617,6 +618,15 @@ export const pickMethods = {
             ...data, user_id: event.sender.user_id,
         }, msg, { id: data.message_id, event_id: data.event_id })
 
+        data.getReply = async () => {
+            const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
+            if (!refIdx) return
+            const full = await getMessageByMsgIdx(refIdx)
+            if (full) return full
+            const message_id = await getMessageIdByMsgIdx(refIdx)
+            return message_id ? { message_id, message: [] } : undefined
+        }
+
         data.getGenerateUrl = callback_data => data.bot.sdk.getGenerateUrl(callback_data)
         data.sendInputNotify = input_second => data.bot.sdk.sendFriendInputNotify(data.openid, 1, input_second || 30, data.message_id)
 
@@ -720,6 +730,15 @@ export const pickMethods = {
         data.reply = msg => this.sendGroupMsg({
             ...data, group_id: event.group_id,
         }, msg, { id: data.message_id })
+
+        data.getReply = async () => {
+            const refIdx = data.ref_msg_idx || data.message?.find(i => i?.type === 'reply')?.id
+            if (!refIdx) return
+            const full = await getMessageByMsgIdx(refIdx)
+            if (full) return full
+            const message_id = await getMessageIdByMsgIdx(refIdx)
+            return message_id ? { message_id, message: [] } : undefined
+        }
 
         if (data.raw_event?.t === "GROUP_AT_MESSAGE_CREATE") data.message.unshift({ type: "at", qq: data.self_id })
 

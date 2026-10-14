@@ -278,11 +278,13 @@ export const sendMethods = {
 
     recallFriendMsg(data, message_id) {
         Bot.makeLog("info", `撤回好友消息：[${data.user_id}] ${message_id}`, data.self_id)
+        if(Bot.storageBackend === 'sqlite') Bot.MsgIdxDB.markRecalledBymsgid(message_id).catch(err => logger.error(err))
         return this.recallMsg(data, i => data.bot.sdk.recallPrivateMessage(data.user_id, i), message_id)
     },
 
     recallGroupMsg(data, message_id) {
         Bot.makeLog("info", `撤回群消息：[${data.group_id}] ${message_id}`, data.self_id)
+        if(Bot.storageBackend === 'sqlite') Bot.MsgIdxDB.markRecalledBymsgid(message_id).catch(err => logger.error(err))
         return this.recallMsg(data, i => data.bot.sdk.recallGroupMessage(data.group_id, i), message_id)
     },
 
