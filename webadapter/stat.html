@@ -5,6 +5,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>使用统计</title>
+    <script>
+        // 主题同步：读取主面板共享的 qwa_theme（auto|light|dark），并监听系统/主面板的深浅切换
+        (function () {
+            try {
+                var m = localStorage.getItem("qwa_theme")
+                if (m !== "light" && m !== "dark") m = "auto"
+                var apply = function () {
+                    var dark = m === "dark" || (m === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches)
+                    if (dark) document.documentElement.setAttribute("data-theme", "dark")
+                    else document.documentElement.removeAttribute("data-theme")
+                    document.documentElement.style.colorScheme = dark ? "dark" : "light"
+                }
+                apply()
+                window.addEventListener("message", function (e) {
+                    if (e && e.data && e.data.type === "theme-changed") { m = e.data.mode || "auto"; apply() }
+                })
+                if (window.matchMedia) {
+                    var mq = matchMedia("(prefers-color-scheme: dark)")
+                    var onChange = function () { if (m === "auto") apply() }
+                    mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange)
+                }
+            } catch (err) {}
+        })()
+    </script>
     <style>
         :root {
             --accent: #4f6ef7;
@@ -17,6 +41,30 @@
             --up: #21a366;
             --down: #f5483b;
             --radius: 12px;
+            /* 图表配色（SVG 由 JS 生成，走变量才能随主题切换） */
+            --chart-grid: #eef0f3;
+            --chart-text: #8a8f99;
+            --chart-line-1: #4f6ef7;
+            --chart-line-2: #21a366;
+            --chart-bar: #9db1fb;
+        }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
+            --accent: #6d87f8;
+            --accent-hover: #8299fa;
+            --bg: #111318;
+            --card: #1a1d23;
+            --border: #2e333d;
+            --text: #e3e6ea;
+            --text-secondary: #a9b1bc;
+            --up: #34c579;
+            --down: #ff6b5e;
+            --chart-grid: #262b33;
+            --chart-text: #6f7680;
+            --chart-line-1: #6d87f8;
+            --chart-line-2: #34c579;
+            --chart-bar: #4a5fc4;
         }
 
         * { box-sizing: border-box; }
@@ -189,6 +237,27 @@
         }
         .toast.show { opacity: 1; }
 
+        /* ===== 深色模式局部修正（变量覆盖不到的硬编码浅色值） ===== */
+        html[data-theme="dark"] .cur-bot .bot-avatar,
+        html[data-theme="dark"] .rank-avatar { background: #22262e; }
+        html[data-theme="dark"] .date-btn,
+        html[data-theme="dark"] .picker button,
+        html[data-theme="dark"] .picker select,
+        html[data-theme="dark"] .sel-btn { background: var(--card); }
+        html[data-theme="dark"] .card { background: #20242c; }
+        html[data-theme="dark"] .help { background: #2a303a; }
+        html[data-theme="dark"] .rank-item { border-bottom-color: rgba(255,255,255,0.06); }
+        html[data-theme="dark"] .rank-bar { background: #22262e; }
+        html[data-theme="dark"] .seg { background: #22262e; }
+        html[data-theme="dark"] .seg button.active { background: #2a303a; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+        html[data-theme="dark"] .sel-list {
+            background: var(--card);
+            scrollbar-color: #3a414b transparent;
+        }
+        html[data-theme="dark"] .sel-list::-webkit-scrollbar-thumb { background: #3a414b; background-clip: content-box; }
+        html[data-theme="dark"] .sel-list::-webkit-scrollbar-thumb:hover { background: #4a5260; background-clip: content-box; }
+        html[data-theme="dark"] .sel-item:hover { background: #2a303a; }
+
         /* 移动端：让出横向空间，避免排行榜与卡片溢出 */
         @media (max-width: 560px) {
             .content { padding: 12px 12px 48px; }
@@ -336,8 +405,8 @@
             for (let i = 0; i <= 4; i++) {
                 const y = padT + (ih / 4) * i
                 const val = Math.round(maxY - (maxY / 4) * i)
-                grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#eef0f3"/>` +
-                    `<text x="${padL - 5}" y="${y + 4}" font-size="${FS}" fill="#8a8f99" text-anchor="end">${val}</text>`
+                grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" style="stroke:var(--chart-grid)"/>` +
+                    `<text x="${padL - 5}" y="${y + 4}" font-size="${FS}" style="fill:var(--chart-text)" text-anchor="end">${val}</text>`
             }
             const ptsU = trend.map((d, i) => `${px(i)},${py(d.users)}`).join(" ")
             const ptsG = trend.map((d, i) => `${px(i)},${py(d.groups)}`).join(" ")
@@ -349,17 +418,17 @@
             trend.forEach((d, i) => {
                 const x = px(i)
                 if (i % step === 0 || i === trend.length - 1) {
-                    labels += `<text x="${x}" y="${H - 8}" font-size="${FS}" fill="#8a8f99" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
+                    labels += `<text x="${x}" y="${H - 8}" font-size="${FS}" style="fill:var(--chart-text)" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
                 }
-                dots += `<circle cx="${x}" cy="${py(d.users)}" r="3" fill="#4f6ef7"/>` +
-                    `<circle cx="${x}" cy="${py(d.groups)}" r="3" fill="#21a366"/>`
+                dots += `<circle cx="${x}" cy="${py(d.users)}" r="3" style="fill:var(--chart-line-1)"/>` +
+                    `<circle cx="${x}" cy="${py(d.groups)}" r="3" style="fill:var(--chart-line-2)"/>`
                 hits += `<rect class="hit" data-i="${i}" x="${x - hitW / 2}" y="0" width="${hitW}" height="${H}" fill="transparent"/>`
             })
 
             return `<div class="chart-wrap" data-chart="trend">
                 <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${grid}
-                    <polyline points="${ptsU}" fill="none" stroke="#4f6ef7" stroke-width="2" stroke-linejoin="round"/>
-                    <polyline points="${ptsG}" fill="none" stroke="#21a366" stroke-width="2" stroke-linejoin="round"/>
+                    <polyline points="${ptsU}" fill="none" style="stroke:var(--chart-line-1)" stroke-width="2" stroke-linejoin="round"/>
+                    <polyline points="${ptsG}" fill="none" style="stroke:var(--chart-line-2)" stroke-width="2" stroke-linejoin="round"/>
                     ${dots}${labels}${hits}</svg>
                 <div class="chart-tip"></div>
             </div>`
@@ -382,15 +451,15 @@
             trend.forEach((d, i) => {
                 const cx = padL + slot * (i + 0.5)
                 const h = Math.max(1, (d.messages / maxM) * ih)
-                bars += `<rect x="${cx - bw / 2}" y="${padT + ih - h}" width="${bw}" height="${h}" rx="2" fill="#9db1fb"/>`
+                bars += `<rect x="${cx - bw / 2}" y="${padT + ih - h}" width="${bw}" height="${h}" rx="2" style="fill:var(--chart-bar)"/>`
                 if (i % step === 0 || i === trend.length - 1) {
-                    labels += `<text x="${cx}" y="${H - 7}" font-size="${FS}" fill="#8a8f99" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
+                    labels += `<text x="${cx}" y="${H - 7}" font-size="${FS}" style="fill:var(--chart-text)" text-anchor="middle">${esc(String(d.date).slice(5))}</text>`
                 }
                 hits += `<rect class="hit" data-i="${i}" x="${padL + slot * i}" y="0" width="${slot}" height="${H}" fill="transparent"/>`
             })
             return `<div class="chart-wrap" data-chart="msg">
                 <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
-                    <line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" stroke="#e0e3e8"/>${bars}${labels}${hits}</svg>
+                    <line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" style="stroke:var(--chart-grid)"/>${bars}${labels}${hits}</svg>
                 <div class="chart-tip"></div>
             </div>`
         }

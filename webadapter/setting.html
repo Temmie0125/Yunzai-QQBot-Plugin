@@ -5,6 +5,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QQBot 设置</title>
+    <script>
+        // 主题同步：读取主面板共享的 qwa_theme（auto|light|dark），并监听系统/主面板的深浅切换
+        (function () {
+            try {
+                var m = localStorage.getItem("qwa_theme")
+                if (m !== "light" && m !== "dark") m = "auto"
+                var apply = function () {
+                    var dark = m === "dark" || (m === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches)
+                    if (dark) document.documentElement.setAttribute("data-theme", "dark")
+                    else document.documentElement.removeAttribute("data-theme")
+                    document.documentElement.style.colorScheme = dark ? "dark" : "light"
+                }
+                apply()
+                window.addEventListener("message", function (e) {
+                    if (e && e.data && e.data.type === "theme-changed") { m = e.data.mode || "auto"; apply() }
+                })
+                if (window.matchMedia) {
+                    var mq = matchMedia("(prefers-color-scheme: dark)")
+                    var onChange = function () { if (m === "auto") apply() }
+                    mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange)
+                }
+            } catch (err) {}
+        })()
+    </script>
     <style>
         :root {
             --accent: #4f6ef7;
@@ -18,6 +42,22 @@
             --danger: #f5483b;
             --ok: #21a366;
             --radius: 12px;
+        }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
+            --accent: #6d87f8;
+            --accent-hover: #8299fa;
+            --bg: #111318;
+            --card: #1a1d23;
+            --border: #2e333d;
+            --field-border: #3a414b;
+            --text: #e3e6ea;
+            --text-secondary: #a9b1bc;
+            --danger: #ff6b5e;
+            --ok: #34c579;
+            /* 覆盖 var(--input-bg, #fff) 的回退值 */
+            --input-bg: #22262e;
         }
 
         * { box-sizing: border-box; }
@@ -291,6 +331,27 @@
         }
         .toast.show { opacity: 1; }
         .loading { text-align: center; color: var(--text-secondary); padding: 40px 0; }
+
+        /* ===== 深色模式局部修正（变量覆盖不到的硬编码浅色值） ===== */
+        html[data-theme="dark"] .bool-row { border-bottom-color: rgba(255,255,255,0.06); }
+        html[data-theme="dark"] .bool-hint { color: #e8a04c; }
+        html[data-theme="dark"] .pill-switch .slider { background: #3a414b; }
+        html[data-theme="dark"] .map-item { background: #20242c; }
+        html[data-theme="dark"] .tpl-tag { background: rgba(109,135,248,0.16); }
+        html[data-theme="dark"] .add-box,
+        html[data-theme="dark"] .add-form,
+        html[data-theme="dark"] .tpl-form,
+        html[data-theme="dark"] .tpl-add-more { border-color: #3a414b; }
+        html[data-theme="dark"] .add-box:hover,
+        html[data-theme="dark"] .tpl-add-more:hover { background: #22262e; }
+        html[data-theme="dark"] .add-form input[type="text"],
+        html[data-theme="dark"] .botqq-picker .botqq-input,
+        html[data-theme="dark"] .tpl-param-inp { background: #22262e; }
+        html[data-theme="dark"] .select-box:hover { border-color: #3a414b; }
+        html[data-theme="dark"] .select-option:hover,
+        html[data-theme="dark"] .botqq-option:hover { background: #2a303a; }
+        html[data-theme="dark"] .select-option.active { background: rgba(109,135,248,0.16); }
+        html[data-theme="dark"] .mini-cancel { background: #2a303a; }
     </style>
 </head>
 
