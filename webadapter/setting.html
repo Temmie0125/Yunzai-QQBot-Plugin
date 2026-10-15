@@ -336,6 +336,8 @@
         html[data-theme="dark"] .bool-row { border-bottom-color: rgba(255,255,255,0.06); }
         html[data-theme="dark"] .bool-hint { color: #e8a04c; }
         html[data-theme="dark"] .pill-switch .slider { background: #3a414b; }
+        /* 选中态规则需同样带前缀，否则被上面的灰色覆盖压掉（优先级多了 html 类型选择器） */
+        html[data-theme="dark"] .pill-switch input:checked + .slider { background: var(--accent); }
         html[data-theme="dark"] .map-item { background: #20242c; }
         html[data-theme="dark"] .tpl-tag { background: rgba(109,135,248,0.16); }
         html[data-theme="dark"] .add-box,
