@@ -341,6 +341,7 @@ segment.card({
 
 - 在插件中可以使用以下方式发送气泡按钮,
 - 按钮写法参考[🔗按钮写法.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/按钮写法.md),其中将segment.button改为调用segment.buble即可，其他写法基本相同。
+- 注意：气泡按钮只显示三个，所以写多了没用，适配器会自动取前三个可用的按钮生成
 
 ```
 segment.buble()
