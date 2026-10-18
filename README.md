@@ -320,6 +320,13 @@ segment.custom('card',{
   title: 'xxx',
   url: 'xxx'
 })
+或者
+segment.card({
+  description:'xxx',
+  pic_url: 'xxx',
+  title: 'xxx',
+  url: 'xxx'
+})
 ```
 
 </details>
@@ -327,6 +334,23 @@ segment.custom('card',{
 <details><summary>支持QQBot api自由切换</summary>
 
 - 目前QQBot支持两个api使用新api:`https://api.bot.qq.com`和旧api:`https://api.sgroup.qq.com`，可使用`#QQBot切换api`并根据提示切换使用的api，当然这两个api仅在非沙箱环境下可用，沙箱环境下只使用旧api`https://sandbox.api.sgroup.qq.com`
+
+</details>
+
+<details><summary>气泡按钮</summary>
+
+- 在插件中可以使用以下方式发送气泡按钮,
+- 按钮写法参考[🔗按钮写法.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/按钮写法.md),其中将segment.button改为调用segment.buble即可，其他写法基本相同。
+
+```
+segment.buble()
+```
+
+</details>
+
+<details><summary>私信召回消息</summary>
+
+- 在插件中可以使用将`e.is_wakeup`设置为`true`来发送私信召回消息
 
 </details>
 
