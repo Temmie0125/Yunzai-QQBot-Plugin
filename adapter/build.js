@@ -292,10 +292,15 @@ export const buildMethods = {
                     i.type = "audio"
                     i.file = await this.makeRecord(i.file)
                 case "video":
-                case "face":
                 case "ark":
                 case "embed":
                 case "file":
+                    messages.push([i])
+                    break
+                case "face":
+                    // face id=0 是收包侧的表情包(faceType=6)标记，官方发送端无对应表情，
+                    // 原样发出会在客户端渲染为字面量 <emoji:0>，直接丢弃
+                    if (i.id == null || i.id === "" || String(i.id) === "0") break
                     messages.push([i])
                     break
                 case "at":
@@ -517,10 +522,15 @@ export const buildMethods = {
                     i.type = "audio"
                     i.file = await this.makeRecord(i.file)
                 case "video":
-                case "face":
                 case "ark":
                 case "embed":
                 case "file":
+                    messages.push([i])
+                    break
+                case "face":
+                    // face id=0 是收包侧的表情包(faceType=6)标记，官方发送端无对应表情，
+                    // 原样发出会在客户端渲染为字面量 <emoji:0>，直接丢弃
+                    if (i.id == null || i.id === "" || String(i.id) === "0") break
                     messages.push([i])
                     break
                 case "at":
@@ -657,6 +667,10 @@ export const buildMethods = {
                     if (!i.text || !i.text.trim()) continue
                     break
                 case "face":
+                    // face id=0 是收包侧的表情包(faceType=6)标记，官方发送端无对应表情，
+                    // 原样发出会在客户端渲染为字面量 <emoji:0>，直接丢弃
+                    if (i.id == null || i.id === "" || String(i.id) === "0") continue
+                    break
                 case "ark":
                 case "embed":
                     break
@@ -673,6 +687,12 @@ export const buildMethods = {
                 case "image":
                     if (sharp && i.file)
                         i.file = await compressImage(data, i.file, this.config, sharp)
+                    // 官方媒体消息单条只承载一个media：前面已有图片时先拆出当前累积段，
+                    // 避免多图同payload时前面的图被最后一张覆盖；文本与单图仍合条发送
+                    if (message.some(s => s?.type === "image")) {
+                        messages.push(message)
+                        message = []
+                    }
                     break
                 case "file":
                     messages.push([i])
@@ -769,5 +789,33 @@ export const buildMethods = {
             }
         }
         return true
+    },
+
+    // 纯图片判定：仅含 image 段（可像其它富媒体一样直发媒体消息），
+    // 允许混入不影响展示的 face id=0 表情包标记与 reply/stream/small 控制段；
+    // 含文本/at/face(id>0)/按钮等其它元素的混排返回 false，仍构造Markdown
+    isImageOnlyMsg(data, msg) {
+        let hasImage = false
+        for (let i of Array.isArray(msg) ? msg : [msg]) {
+            if (typeof i === "object")
+                i = { ...i }
+            else
+                return false
+            switch (i.type) {
+                case "image":
+                    hasImage = true
+                    break
+                case "face":
+                    if (i.id != null && i.id !== "" && String(i.id) !== "0") return false
+                    break
+                case "reply":
+                case "stream":
+                case "small":
+                    break
+                default:
+                    return false
+            }
+        }
+        return hasImage
     }
 }

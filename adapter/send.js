@@ -46,9 +46,10 @@ export const sendMethods = {
         const forcePlain = data.legacy || (messages.length === 1 && messages[0].type === "image" && data.event_id?.startsWith("INTERACTION_CREATE"))
         if (mdMode === "legacy" || forcePlain) {
             msgs = await this.makeMsg(data, msg)
-        } else if (mdMode === "auto" && this.isPlainMsg(data, msg)) {
+        } else if (mdMode === "auto" && (this.isPlainMsg(data, msg) || this.isImageOnlyMsg(data, msg))) {
             // 智能判定：纯文本按原生消息发送，特殊字符不再被QQ当作markdown渲染；
-            // 含@/图片/按钮/显式segment.markdown等特殊内容时仍走markdown
+            // 纯图片(含表情包的face id=0标记段)与其它富媒体一样直发媒体消息，不再构造Markdown图片外链；
+            // 含@/文本+图片混排/按钮/显式segment.markdown等特殊内容时仍走markdown
             msgs = await this.makeMsg(data, msg)
         } else {
             msgs = await this.makeRawMarkdownMsg(data, msg)
