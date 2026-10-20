@@ -171,6 +171,29 @@ export const messageMethods = {
                 }
                 data.sender.role = event.author?.member_role || user?.role || "member"
 
+                // 官Bot回调事件不带user_name：非好友点击时sender.nickname为空，插件侧只能显示复合ID。
+                // 从gml/用户资料缓存回填，仍无则拉群成员API一次并回写users缓存
+                //（下方的setGroupMap/setUserMap会把带昵称的sender落进gml与users，后续点击免API）
+                if (!data.sender.nickname) {
+                    const uid = `${id}${this.sep}${event.operator_id}`
+                    const cached = await data.bot.users?.get(uid)
+                    data.sender.nickname = user?.nickname || user?.card || cached?.nickname || cached?.card || ""
+                    if (!data.sender.nickname) {
+                        try {
+                            const info = await data.bot.sdk.getGroupMemberInfo(event.group_id, event.operator_id)
+                            if (info?.nickname) {
+                                data.sender.nickname = info.nickname
+                                await data.bot.users?.set(uid, {
+                                    ...cached, nickname: info.nickname,
+                                    card: info.card || info.nickname, user_id: uid,
+                                })
+                            }
+                        } catch (e) {
+                            Bot.makeLog("debug", ["按钮回调获取群成员昵称失败", e], id)
+                        }
+                    }
+                }
+
                 let group_data = await data.bot.gl.get(data.group_id)
                 if (!group_data || !group_data?.group_name) {
                     try {

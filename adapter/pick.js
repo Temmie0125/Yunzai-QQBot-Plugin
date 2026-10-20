@@ -645,6 +645,11 @@ export const pickMethods = {
             openid: event.sender?.user_id || "",
             role: event.author?.member_role || "member",
         }
+        // 官Bot群消息不一定带user_name：从用户资料缓存回填昵称，插件侧无需各自兜底
+        // （回调按钮点击路径已有缓存+API完整解析；此处仅查缓存，不做API调用）
+        if (!data.sender.nickname) {
+            data.sender.nickname = await data.bot.users?.get(data.sender.user_id)?.nickname || ""
+        }
         data.group_id = `${data.self_id}${this.sep}${event.group_id}`
 
         let group_data = await data.bot.gl.get(data.group_id)
