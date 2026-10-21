@@ -664,7 +664,7 @@ export const buildMethods = {
             switch (i.type) {
                 case "at":
                     if (i.qq === "all")
-                        content += "<qqbot-at-everyone />"
+                        messages.push({ type: "text", text: "<qqbot-at-everyone />" })
                     //i.user_id = i.qq?.replace?.(`${data.self_id}${this.sep}`, "")
                     continue
                 case "text":
