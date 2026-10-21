@@ -307,6 +307,8 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 移除群黑名单接口`e.group.delGroupMemberBlackList(user_ids)`、`e.bot.pickGroup(group_id).delGroupMemberBlackList(user_ids)`,这里的user_ids为用户openid数组，如果单用户也可以直接传openid，会自动转换成数组。
 
+- 素材管理接口`e.bot.sdk.uploadMediaImage(file,filename)`、`e.bot.sdk.getMediaImages()`、`e.bot.sdk.deleteMediaImage(media_id)`, 上传、列表、删除素材
+
 </details>
 
 <details><summary>发送msg_type=8的卡片</summary>
@@ -352,6 +354,20 @@ segment.buble()
 <details><summary>私信召回消息</summary>
 
 - 在插件中可以使用将`e.is_wakeup`设置为`true`来发送私信召回消息
+
+</details>
+
+<details><summary>qqbot素材管理（官方图床）</summary>
+
+- 可以在插件中使用`e.bot.sdk.uploadMediaImage(file,filename)`来上传图片，返回的url可直接插入本bot的markdown中使用
+- 可以使用`e.bot.sdk.getMediaImages()`来获取素材列表
+- 可以使用`e.bot.sdk.deleteMediaImage(image_id)`来删除素材(image_id可以从列表或者上传接口返回中获取)
+- 注意❗❗❗：
+  - 返回的url为qqbot-media专属链接，仅上传bot可使用，要想公网访问或者在其他bot中使用，请使用返回的preview_url（目前无压缩），支持外网访问，但是只短时效
+  - 目前只支持以下格式图片`png / jpeg / gif / webp`
+  - 单图限制10MB以内
+  - 最后一次使用起90天未使用则自动失效
+  - 单机器人100张上限（可通过删除接口释放），有点鸡肋，看着用吧
 
 </details>
 
