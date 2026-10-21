@@ -2,23 +2,36 @@
 
 # TRSS-Yunzai QQBot Plugin
 
-TRSS-Yunzai QQBot 适配器 插件(自用修改版)
-
-[🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)
+TRSS-Yunzai QQBot 适配器插件（个人修改 Fork）
 
 </div>
 
+> 本仓库 Fork 自上游 [wind-trace-typ/Yunzai-QQBot-Plugin](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin)，感谢上游作者的开发与维护。Fork 以自用定制为主，与上游存在行为差异，安装请以本 README 为准，上游原版与交流方式见文末[「上游与反馈」](#上游与反馈)。
+
+## 本 Fork 的主要改动
+
+在上游「与原版区别」的基础上，本 Fork 另含以下自用修改（详见 [commit 历史](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/commits/fork/)）：
+
+- ⚠ SDK 依赖 `@windtrace/qq-group-bot` 已替换为 Fork 版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（tag `v1.0.39-patched`），修复文件分片上传等问题
+- 消息发送模式新增 `auto` 智能判定：纯文本直发不再走 markdown 渲染，纯图片消息直发媒体消息
+- 群消息/按钮回调事件注入用户昵称，退群事件昵称兜底
+- 引用消息解析增强：本地消息查回、按内容兜底匹配、支持引用撤回
+- 好友表只存真实好友（C2C），群成员资料转入 users 缓存
+- 群管权限判断、入群审批等对齐官方 API
+- 前端页面适配深色模式
+
 ## 安装教程
 
-1. 准备：[TRSS-Yunzai](../../../Yunzai)
-2. 在yunzai根目录使用
+1. 准备：[TRSS-Yunzai](https://github.com/TimeRainStarSky/Yunzai)
+2. 在yunzai根目录使用（⚠ 注意必须带 `-b fork`：本仓库 `main` 分支仅同步上游原版，所有修改都在 `fork` 分支上，不带参数 clone 得到的将是原版）：
 ```
-git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQBot-Plugin
+git clone -b fork https://github.com/Temmie0125/Yunzai-QQBot-Plugin.git ./plugins/QQBot-Plugin
 ```
-3. 打开：[QQ 开放平台](https://q.qq.com) 创建 Bot：  
+3. ⚠ **SDK 安装说明**：本插件依赖的 SDK 是修改版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（已在 `package.json` 中声明），在yunzai根目录执行 `pnpm i` 会自动安装 Fork 版 SDK，**请勿手动安装 npm 上的上游版 `@windtrace/qq-group-bot` 覆盖**；若此前安装过上游版，重新执行 `pnpm i` 即会替换为 Fork 版
+4. 打开：[QQ 开放平台](https://q.qq.com) 创建 Bot：  
 ① 创建机器人  
 ② 开发设置 → 得到 `机器人QQ号`、`AppID`、`Token`、`AppSecret`  
-4. 输入：`#QQBot设置` 并按照提示输入对应配置
+5. 输入：`#QQBot设置` 并按照提示输入对应配置
 
 ## 新增bot
 
@@ -54,14 +67,14 @@ git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQB
 <details><summary>新增原生按钮控制</summary>
 
 - 根据设置自动判断是否使用按钮，若是无原生按钮权限，则自动将原本的按钮转换成对应的蓝字，写法与原生按钮完全相同
-- 按钮写法参考[🔗按钮写法.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/按钮写法.md)
+- 按钮写法参考[🔗按钮写法.md](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/blob/fork/按钮写法.md)
 
 </details>
 
 <details><summary>新增分享链接获取</summary>
 
 - 调用方式e.getGenerateUrl(callback_data),callback_data类型为string(32)，会在机器人新增好友时传入(⚠经测试仅wh能够收到这个callback_data，ws没有)，参考使用[🔗分享链接.js](https://gitee.com/wind-trace-typ/wind-js/blob/master/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5.js)
-- 如果需要接收新增好友事件并进行处理还需要修改qq-group-bot依赖(❗现改为@windtrace/qq-group-bot,无需手动修改)，改动参考[🔗依赖改动.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
+- 如果需要接收新增好友事件并进行处理还需要修改qq-group-bot依赖(❗本Fork已改用修改版依赖github:Temmie0125/qq-group-bot，无需手动修改)，改动参考[🔗依赖改动.md](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/blob/fork/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
 
 </details>
 
@@ -86,7 +99,7 @@ user_id仅用:分割，以免数据迁移有问题
 
 <details><summary>新增文件发送功能(当前仅私聊可发送)</summary>
 
-- 使用方法this.reply(segment.file(file,filename))，此功能需额外修改qq-group-bot依赖(❗现改为@windtrace/qq-group-bot,无需手动修改)，修改参考[🔗依赖改动.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
+- 使用方法this.reply(segment.file(file,filename))，此功能需额外修改qq-group-bot依赖(❗本Fork已改用修改版依赖github:Temmie0125/qq-group-bot，无需手动修改)，修改参考[🔗依赖改动.md](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/blob/fork/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
 
 </details>
 
@@ -117,7 +130,7 @@ async accept() {
 
 <details><summary>新增支持引用以及解析用户引用消息</summary>
 
-- 如果需要引用用户消息（当前仅私信可以艾特，且尽量在使用普通消息才引用，目前markdown使用引用后会有bug），可使用`segment.reply(e.msg_idx)`,如果需要引用用户引用的消息可使用`segment.reply(e.ref_msg_idx)`，用户引用的消息内容为e.msg_elements,当前可解析到用户引用的`文字`，`face表情`，`图片`，`语音`，`视频`，`文件`，官机的艾特等详细信息(参考[🔗msg_elements.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/msg_elements.md))，当前还无法解析到卡片，ark，转发消息，普通用户艾特等详细信息，如果不想使用segment.reply想直接使用`this.reply(msg,quote)`，可修改`Yunzai/lib/plugins/loader.js`的435-440行的
+- 如果需要引用用户消息（当前仅私信可以艾特，且尽量在使用普通消息才引用，目前markdown使用引用后会有bug），可使用`segment.reply(e.msg_idx)`,如果需要引用用户引用的消息可使用`segment.reply(e.ref_msg_idx)`，用户引用的消息内容为e.msg_elements,当前可解析到用户引用的`文字`，`face表情`，`图片`，`语音`，`视频`，`文件`，官机的艾特等详细信息(参考[🔗msg_elements.md](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/blob/fork/msg_elements.md))，当前还无法解析到卡片，ark，转发消息，普通用户艾特等详细信息，如果不想使用segment.reply想直接使用`this.reply(msg,quote)`，可修改`Yunzai/lib/plugins/loader.js`的435-440行的
 
 ```
       if (quote && e.message_id) {
@@ -283,7 +296,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 获取群禁言状态接口，可以通过以下方式获取群禁言状态`e.group.getGroupMuteState()`、`e.bot.pickGroup(group_id).getGroupMuteState()`,返回的数据结构如下：
 
-- QQBot自定义菜单、列表相关接口，具体接口参考[menuPanel.js](https://gitee.com/wind-trace-typ/Yunzai/blob/master/lib/plugins/menuPanel.js)，可以使用[QQBot-Web-Adapter](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)来实现可视化的自定义菜单和列表
+- QQBot自定义菜单、列表相关接口，具体接口参考[menuPanel.js](https://gitee.com/wind-trace-typ/Yunzai/blob/master/lib/plugins/menuPanel.js)，可以使用[QQBot-Web-Adapter](https://github.com/Temmie0125/QQBot-Web-Adapter)来实现可视化的自定义菜单和列表
 
 ```
 {
@@ -332,12 +345,11 @@ segment.custom('card',{
 
 ## 其他
 
-- 当前可以配合[🔗qqbot-web-adapter插件](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)直接在网页端进行编辑设置以及添加新bot,具体参考下图
+- 当前可以配合[🔗qqbot-web-adapter插件](https://github.com/Temmie0125/QQBot-Web-Adapter)直接在网页端进行编辑设置以及添加新bot,具体参考下图
 ![alt text](./webadapter/qrlogin.png)
 ![alt text](./webadapter/webadapter.png)
 
-## 问题反馈
+## 上游与反馈
 
-- [🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)反馈
-- 邮箱459521475@qq.com反馈
-- 直接提issue反馈(可能不会及时看到)
+- 本 Fork 的问题请直接提 [issue](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/issues) 反馈
+- 上游原版仓库：[wind-trace-typ/Yunzai-QQBot-Plugin](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin)，上游问题可通过[🔗内部交流群 1095352740](https://qm.qq.com/q/JxYAlbKRGy)或邮箱459521475@qq.com反馈
