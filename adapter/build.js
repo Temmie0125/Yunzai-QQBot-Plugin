@@ -302,7 +302,7 @@ export const buildMethods = {
                     break
                 case "at":
                     if (i.qq === "all")
-                        content += "@everyone"
+                        content += "<qqbot-at-everyone />"
                     else
                         content += data.platform.startsWith("QQ") ? `<@${String(i.qq).split(this.sep)[1] || i.qq}>` : `<@${String(i.qq).split("_")[1] || i.qq}>`
                     break
@@ -537,7 +537,7 @@ export const buildMethods = {
                     break
                 case "at":
                     if (i.qq === "all")
-                        content += "@everyone"
+                        content += "<qqbot-at-everyone />"
                     else
                         content += data.platform.startsWith("QQ") ? `<@${String(i.qq).split(this.sep)[1] || i.qq}>` : `<@${String(i.qq).split("_")[1] || i.qq}>`
                     break
