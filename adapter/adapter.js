@@ -1,4 +1,5 @@
 // QQBot 适配器主类：组合各方法模块，导出单例 adapter
+import { createRequire } from "module"
 import { config, pkg } from "./context.js"
 import { buildMethods } from "./build.js"
 import { sendMethods } from "./send.js"
@@ -6,12 +7,20 @@ import { pickMethods } from "./pick.js"
 import { messageMethods } from "./message.js"
 import { connectMethods } from "./connect.js"
 
+const require = createRequire(import.meta.url)
+
 class QQBotAdapter {
     constructor() {
         this.id = "QQBot"
         this.name = "QQBot"
         this.path = "data/QQBot/"
-        this.version = `@windtrace/qq-group-bot v${pkg.dependencies["@windtrace/qq-group-bot"]}`
+        // git 方式安装时 dependencies 里是完整声明串（github:owner/repo#vX.Y.Z），拼进展示名会过长，
+        // 优先读实际安装包的版本号，读不到再回退声明串
+        let sdkVersion = pkg.dependencies["@windtrace/qq-group-bot"]
+        try {
+            sdkVersion = require("@windtrace/qq-group-bot/package.json").version
+        } catch {}
+        this.version = `@windtrace/qq-group-bot v${sdkVersion}`
 
         this.sep = ":"
         this.bind_user = {}
