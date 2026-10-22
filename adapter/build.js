@@ -209,8 +209,18 @@ export const buildMethods = {
         return msg
     },
 
-    makeButtons(data, button_square) {
+    makeButtons(data, button_square, buble = false) {
         const msgs = []
+        if (buble) {
+            const buttons = button_square
+                .flat()
+                .map(button => this.makeButton(data, button))
+                .filter(Boolean)
+                .slice(0, 3)
+            if (buttons.length)
+                msgs.push({ type: "buble", buttons })
+            return msgs
+        }
         for (const button_row of button_square) {
             const buttons = []
             for (let button of button_row) {
@@ -234,7 +244,7 @@ export const buildMethods = {
     },
 
     async makeRawMarkdownMsg(data, msg) {
-        const messages = [], button = [], keyboard = []
+        const messages = [], button = [], keyboard = [], buble = []
         let content = "", reply
 
         const msgArray = Array.isArray(msg) ? msg : [msg]
@@ -305,7 +315,7 @@ export const buildMethods = {
                     break
                 case "at":
                     if (i.qq === "all")
-                        content += "@everyone"
+                        content += "<qqbot-at-everyone />"
                     else
                         content += data.platform.startsWith("QQ") ? `<@${String(i.qq).split(this.sep)[1] || i.qq}>` : `<@${String(i.qq).split("_")[1] || i.qq}>`
                     break
@@ -325,6 +335,9 @@ export const buildMethods = {
                 case "button":
                     if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
+                    break
+                case "buble":
+                    buble.push(...this.makeButtons(data, i.data, true))
                     break
                 case "reply":
                     if (i.id.startsWith("event_"))
@@ -396,6 +409,13 @@ export const buildMethods = {
                     { type: "markdown", content: " " },
                     ...button.splice(0, 5),
                 ])
+        }
+
+        if (buble.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown")
+                    i.push(...buble)
+            }
         }
 
         if (reply) for (const i in messages) {
@@ -535,7 +555,7 @@ export const buildMethods = {
                     break
                 case "at":
                     if (i.qq === "all")
-                        content += "@everyone"
+                        content += "<qqbot-at-everyone />"
                     else
                         content += data.platform.startsWith("QQ") ? `<@${String(i.qq).split(this.sep)[1] || i.qq}>` : `<@${String(i.qq).split("_")[1] || i.qq}>`
                     break
@@ -661,6 +681,8 @@ export const buildMethods = {
 
             switch (i.type) {
                 case "at":
+                    if (i.qq === "all")
+                        messages.push({ type: "text", text: "<qqbot-at-everyone />" })
                     //i.user_id = i.qq?.replace?.(`${data.self_id}${this.sep}`, "")
                     continue
                 case "text":

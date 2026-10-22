@@ -20,6 +20,16 @@ import { QQBotQrLogin } from "./apps/qrlogin.js"
 import { QQBotAppSet } from "./apps/appset.js"
 import { QQBotStat } from "./apps/stat.js"
 
+global.segment.buble = function (...data) {
+  return { type: 'buble', data }
+}
+global.segment.small = function () {
+  return { type: 'small' }
+}
+global.segment.card = function (data) {
+  return { type: 'card', ...data }
+}
+
 import {
     initStat, getSummary, getDaily, getTrend, getTopUsers, getGroupStats, clearStat, dateStr,
 } from "./lib/stat.js"

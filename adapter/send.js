@@ -90,6 +90,7 @@ export const sendMethods = {
         event = this.fixPassiveSource(data, event, "user", data.user_id)
         return this.sendMsg(data, msg => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
+            if (data.is_wakeup) event ? event.is_wakeup = true : event = { is_wakeup: true }
             return data.bot.sdk.sendPrivateMessage(data.user_id, msg, event, { stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
         }, msg).then(rets => {
             // C2C主动消息发送成功即确认好友关系（对非好友会发送失败）：
