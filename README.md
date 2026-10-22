@@ -12,7 +12,7 @@ TRSS-Yunzai QQBot 适配器插件（个人修改 Fork）
 
 在上游「与原版区别」的基础上，本 Fork 另含以下自用修改（详见 [commit 历史](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/commits/fork/)）：
 
-- ⚠ SDK 依赖 `@windtrace/qq-group-bot` 已替换为 Fork 版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（tag `v1.0.39-patched`），修复文件分片上传等问题
+- ⚠ SDK 依赖 `@windtrace/qq-group-bot` 已替换为 Fork 版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（tag `v1.0.41-patched`），修复文件分片上传等问题
 - 消息发送模式新增 `auto` 智能判定：纯文本直发不再走 markdown 渲染，纯图片消息直发媒体消息
 - 群消息/按钮回调事件注入用户昵称，退群事件昵称兜底
 - 引用消息解析增强：本地消息查回、按内容兜底匹配、支持引用撤回
