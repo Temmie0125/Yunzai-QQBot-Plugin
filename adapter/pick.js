@@ -517,7 +517,30 @@ export const pickMethods = {
             const full = await getMessageByMsgIdx(refIdx)
             if (full) return full
             const message_id = await getMessageIdByMsgIdx(refIdx)
-            return message_id ? { message_id, message: [] } : undefined
+            let message = [] 
+            for (const msg_element of data.msg_elements){
+                if(msg_element.attachments){
+                for (const attachment of msg_element.attachments){
+                    const { content_type, content, ...rest } = attachment
+                    message.push({
+                        type:content_type.split('/')[0],
+                        ...(content !== undefined && { summary: content }),
+                        ...rest
+                    })
+                }
+                }
+                if(msg_element.content) 
+                    message.push({
+                        type:'text',
+                        text: msg_element.content
+                    })
+                if(msg_element.ark_data) 
+                    message.push({
+                        type:'ark',
+                        ...msg_element.ark_data
+                    })
+            }
+            return { message_id, message }
         }
 
         if (data.raw_event?.t === "GROUP_AT_MESSAGE_CREATE") data.message.unshift({ type: "at", qq: data.self_id })
