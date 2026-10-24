@@ -132,6 +132,12 @@ export const pickMethods = {
                     true,
                 )
                 return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, "decline", join_request_id, reject_reason, add_to_member_blacklist)
+            },
+            get is_owner() {
+                return data.sender.role || data.bot.gml.get(group_id)?.get(data.user_id)?.role === "owner"
+            },
+            get is_admin() {
+                return data.sender.role || data.bot.gml.get(group_id)?.get(data.user_id)?.role === "admin" || this.is_owner
             }
         }
     },
@@ -167,7 +173,26 @@ export const pickMethods = {
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
             //getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
-            getBotStatus: () => i.bot.sdk.getGroupBotInfo(i.group_id),
+            getBotStatus: async (force = false) => {
+                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                if (force || !bot) {
+                    let botStatus = await i.bot.sdk.getGroupBotInfo(i.group_id)
+                    botStatus = {
+                        ...botStatus,
+                        user_id: i.self_id,
+                        bot: true,
+                        nickname: i.bot.nickname,
+                        avatar: i.bot.avatar,
+                        card: i.bot.nickname,
+                        openid: botStatus.member_openid,
+                        role: botStatus.member_role,
+                    }
+                    i.bot.gml.get(group_id)?.set(i.self_id, botStatus)
+                    i.bot.gml.get(group_id)?.set(`${i.self_id}${this.sep}${botStatus.openid}`, botStatus)
+                    return botStatus
+                }
+                return bot
+            },
             kickGroupMembers: (user_ids, add_to_member_blacklist = false) => {
                 if (typeof user_ids === 'string') user_ids = [user_ids]
                 return i.bot.sdk.kickGroupMembers(i.group_id, user_ids.map(item => item.replace(`${id}${this.sep}`, "")), add_to_member_blacklist)
@@ -270,6 +295,16 @@ export const pickMethods = {
             delGroupMemberBlackList: (member_openids) => {
                 if (typeof member_openids === 'string') member_openids = [member_openids]
                 return i.bot.sdk.changeGroupMemberBlackList(i.group_id, 'del', member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
+            },
+            get is_owner() {
+                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                if (!bot) this.getBotStatus()
+                return bot?.role === "owner"
+            },
+            get is_admin() {
+                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                if (!bot) this.getBotStatus()
+                return bot?.role === "admin" || this.is_owner
             }
         }
     },
