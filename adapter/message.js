@@ -272,6 +272,11 @@ export const messageMethods = {
 
             data.group_data = group_data || {}
             data.group_name = group_data?.group_name || ""
+            try{
+                await this.setGroupMap(data)
+            }catch(e){
+                logger.warn('群信息记录失败')
+            }
             data.reply = msg => this.sendGroupMsg({
                 ...data, group_id: event.group_id,
             }, msg, { event_id: data.event_id })

@@ -162,12 +162,8 @@ export const pickMethods = {
             getAvatarUrl: () => `https://q.qlogo.cn/g?b=qq&nk=1&s=100`, // 暂时占位
             pickMember: user_id => this.pickMember(id, group_id, user_id),
             getMemberMap: () => i.bot.gml.get(group_id),
-            getGroupMemberList: (cursor = undefined) => {
-                i.bot.sdk.getGroupMemberList(i.group_id, cursor)
-            },
-            getMemberList: (cursor = undefined) => {
-                i.bot.sdk.getGroupMemberList(i.group_id, cursor)
-            }, // 兼容野鸡
+            getGroupMemberList: (cursor = undefined) => i.bot.sdk.getGroupMemberList(i.group_id, cursor),
+            getMemberList: (cursor = undefined) => i.bot.sdk.getGroupMemberList(i.group_id, cursor), // 兼容野鸡
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
             //getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
