@@ -135,10 +135,10 @@ export const pickMethods = {
                 return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, "decline", join_request_id, reject_reason, add_to_member_blacklist)
             },
             get is_owner() {
-                return data.sender.role || data.bot.gml.get(group_id)?.get(data.user_id)?.role === "owner"
+                return (i.role ?? i.bot.gml.get(group_id)?.get(i.user_id)?.role) === "owner"
             },
             get is_admin() {
-                return data.sender.role || data.bot.gml.get(group_id)?.get(data.user_id)?.role === "admin" || this.is_owner
+                return (i.role ?? i.bot.gml.get(group_id)?.get(i.user_id)?.role) === "admin" || this.is_owner
             }
         }
     },
