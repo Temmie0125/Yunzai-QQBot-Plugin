@@ -114,7 +114,7 @@ export const buildMethods = {
         let summary = _file.summary || "图片"
         summary = /[<>\[\]()]/.test(summary) ? "图片" : summary
         return {
-            des: `![${summary} #${image.width || 0}px #${image.height || 0}px]`,
+            des: `![${summary} ${_file.scheme ? `scheme="${_file.scheme}"` : ''} #${image.width || 0}px #${image.height || 0}px]`,
             url: `(${image.url})`,
         }
     },
