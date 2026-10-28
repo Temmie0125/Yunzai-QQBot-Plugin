@@ -375,6 +375,22 @@ segment.buble()
 
 </details>
 
+<details><summary>额外的segment构造器支持</summary>
+
+- segment.card(data) 可以用于构造msg_type=8的卡片
+
+- segment.small() 可以用于小按钮
+
+- segment.buble(data) 可以用于气泡按钮构造，data结构参考按钮
+
+- segment.inlinecmd(text,input,enter,reply) 用于构造mqqapi文本按钮
+
+- segment.qqbotcmd(text,input,enter,reply) 用于构造qqbot-cmd文本按钮
+
+- segment.link(text,link) 用于构造跳转链接文本按钮
+
+</details>
+
 ## 其他
 
 - 当前可以配合[🔗qqbot-web-adapter插件](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)直接在网页端进行编辑设置以及添加新bot,具体参考下图

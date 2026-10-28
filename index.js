@@ -20,15 +20,26 @@ import { QQBotQrLogin } from "./apps/qrlogin.js"
 import { QQBotAppSet } from "./apps/appset.js"
 import { QQBotStat } from "./apps/stat.js"
 
-global.segment.buble = function (...data) {
-  return { type: 'buble', data }
-}
-global.segment.small = function () {
-  return { type: 'small' }
-}
-global.segment.card = function (data) {
-  return { type: 'card', ...data }
-}
+Object.assign(global.segment, {
+  buble(...data) {
+    return { type: 'buble', data }
+  },
+  small() {
+    return { type: 'small' }
+  },
+  card(data) {
+    return { type: 'card', ...data }
+  },
+  inlinecmd(text, input, enter = false, reply = false) {
+    return `[${text}](mqqapi://aio/inlinecmd?command=${encodeURIComponent(input)}&enter=${enter}&reply=${reply})`
+  },
+  qqbotcmd(text, input, enter = false, reply = false) {
+    return enter ? `<qqbot-cmd-enter text="${encodeURIComponent(input)}" />` : `<qqbot-cmd-input text="${encodeURIComponent(input)}" show="${encodeURIComponent(text)}" reference="${reply}" />`
+  },
+  link(text, link){
+    return `[🔗${text}](${link})`
+  }
+})
 
 import {
     initStat, getSummary, getDaily, getTrend, getTopUsers, getGroupStats, clearStat, dateStr,
