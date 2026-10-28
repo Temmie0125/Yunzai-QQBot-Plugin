@@ -355,6 +355,7 @@ export const buildMethods = {
                     data.smallbtn = true
                     continue
                 case "card":
+                    const url = i.url ?? i.data?.url
                     messages.push({
                         type: "card",
                         data: {
@@ -363,7 +364,7 @@ export const buildMethods = {
                                 description: i.description || i.data?.description,
                                 pic_url: i.pic_url || i.data?.pic_url,
                                 title: i.title || i.data?.title,
-                                url: i.url || i.data?.title
+                                url: url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
                             }
                         }
                     })
