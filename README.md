@@ -235,7 +235,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 群信息接口，可通过以下方式获取群信息`e.group.getGroupInfo()`、`e.bot.pickGroup(group_id).getGroupInfo()`
 
-- 群bot状态接口，可通过以下方式获取群bot状态`e.group.getGroupBotInfo()`、`e.bot.pickGroup(group_id).getGroupBotInfo()`
+- 群bot状态接口，可通过以下方式获取群bot状态`e.group.getGroupBotInfo(force)`、`e.bot.pickGroup(group_id).getGroupBotInfo(force)`,这里force指是否强制通过api刷新，如果不填自动从gml中获取
 
 - 群成员信息接口，可通过以下方式获取群成员信息`e.member.getGroupMemberInfo()`、`e.group.pickMember(user_id).getGroupMemberInfo()`、`e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo()`
 
@@ -308,6 +308,10 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 - 移除群黑名单接口`e.group.delGroupMemberBlackList(user_ids)`、`e.bot.pickGroup(group_id).delGroupMemberBlackList(user_ids)`,这里的user_ids为用户openid数组，如果单用户也可以直接传openid，会自动转换成数组。
 
 - 素材管理接口`e.bot.sdk.uploadMediaImage(file,filename)`、`e.bot.sdk.getMediaImages()`、`e.bot.sdk.deleteMediaImage(media_id)`, 上传、列表、删除素材
+
+- 群列表接口`e.bot.getGroupList()`和`e.bot.getGroupArray()`分别返回group_id数组和group对象数组
+
+- 用户列表接口`e.bot.getFriendList()`和`e.bot.getFriendArray()`分别返回user_id数组和user对象数组
 
 </details>
 

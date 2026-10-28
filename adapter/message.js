@@ -277,6 +277,7 @@ export const messageMethods = {
             }catch(e){
                 logger.warn('群信息记录失败')
             }
+
             data.reply = msg => this.sendGroupMsg({
                 ...data, group_id: event.group_id,
             }, msg, { event_id: data.event_id })
@@ -293,14 +294,6 @@ export const messageMethods = {
                 return this.makeCallback(id, event)
             case "increase": {
                 if (data.notice_type !== "guild") {
-                    data.sender = {
-                        user_id: data.user_id,
-                        openid: data.openid,
-                        unionid: data.unionid,
-                        nickname: data.nickname,
-                        avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${data.openid}/0`
-                    }
-                    this.setGroupMap(data)
                     if (Bot.autoRecordMessage === true) saveNotice(data)
                 }
                 break
@@ -313,6 +306,10 @@ export const messageMethods = {
                 break
             }
             case "add":
+                if (data.notice_type === "group") {
+                    // 缓存本群信息
+                    data.bot.pickGroup(data.group_id).getBotStatus()
+                }
             case "del":
                 if (data.notice_type !== "guild") {
                     if (Bot.autoRecordMessage === true) saveNotice(data)
