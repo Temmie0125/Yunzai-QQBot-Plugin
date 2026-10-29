@@ -31,13 +31,89 @@ Object.assign(global.segment, {
     return { type: 'card', ...data }
   },
   inlinecmd(text, input, enter = false, reply = false) {
-    return `[${text}](mqqapi://aio/inlinecmd?command=${encodeURIComponent(input)}&enter=${enter}&reply=${reply})`
+    return `[${text}](mqqapi://aio/inlinecmd?command=${encodeURIComponent(input ?? text)}&enter=${enter}&reply=${reply})`
   },
   qqbotcmd(text, input, enter = false, reply = false) {
-    return enter ? `<qqbot-cmd-enter text="${encodeURIComponent(input)}" />` : `<qqbot-cmd-input text="${encodeURIComponent(input)}" show="${encodeURIComponent(text)}" reference="${reply}" />`
+    return enter ? `<qqbot-cmd-enter text="${encodeURIComponent(input ?? text)}" />` : `<qqbot-cmd-input text="${encodeURIComponent(input ?? text)}" show="${encodeURIComponent(text)}" reference="${reply}" />`
   },
   link(text, link){
     return `[🔗${text}](${link})`
+  },
+  ark(template_id, data = {}){
+    const id = Number(template_id)
+    const kv = []
+    const get = (...names) => {
+      for (const n of names) {
+        for (const k of Object.keys(data)) {
+          if (k === n || k.toLowerCase() === n.toLowerCase()) return data[k]
+        }
+      }
+      return undefined
+    }
+    const need = (v, name) => {
+      const s = _str(v)
+      if (!s) throw new Error(`[ark ${id}] ${name} 必填`)
+      return s
+    }
+    const needUrl = (v, name) => {
+      const s = need(v, name)
+      //if (!/^https?:\/\/\S+$/.test(s)) throw new Error(`[ark ${id}] ${name} 必须是 http(s) 链接`)
+      return s
+    }
+    const push = (key, value) => kv.push({ key, value })
+    switch(Number(template_id)){
+      case 23:{
+        push('#DESC#',   need(get('desc'), 'desc'))
+        push('#PROMPT#', need(get('prompt'), 'prompt'))
+
+        const list = (Array.isArray(get('list')) ? get('list') : [get('list')])
+          .flat().filter(Boolean)
+          .map((item) => {
+            let desc, link
+            if (typeof item === 'string')           desc = item
+            else if (Array.isArray(item))           [desc, link] = item
+            else { desc = item.desc ?? item.text; link = item.link ?? item.url }
+
+            desc = need(desc, 'list[].desc')
+            const obj_kv = [{ key: 'desc', value: desc }]
+            if (_str(link)) obj_kv.push({ key: 'link', value: needUrl(link, 'list[].link') })
+            return { obj_kv }
+          })
+        if (!list.length) throw new Error(`[ark 23] list 不能为空`)
+        kv.push({ key: '#LIST#', obj: list })
+        break
+      }
+      case 24: {
+        push('#DESC#',     need(get('desc'), 'desc'))
+        push('#PROMPT#',   need(get('prompt'), 'prompt'))
+        push('#TITLE#',    need(get('title'), 'title'))
+        push('#METADESC#', need(get('metadesc', 'meta_desc', 'metaDesc'), 'metadesc'))
+        push('#IMG#',      needUrl(get('img'), 'img'))
+        push('#LINK#',     needUrl(get('link'), 'link'))
+        push('#SUBTITLE#', need(get('subtitle', 'sub_title', 'subTitle'), 'subtitle'))
+        break
+      }
+      case 37: {
+        push('#PROMPT#',       need(get('prompt'), 'prompt'))
+        push('#METATITLE#',    need(get('metatitle', 'meta_title', 'metaTitle'), 'metatitle'))
+        push('#METASUBTITLE#', need(get('metasubtitle', 'meta_subtitle', 'metaSubtitle'), 'metasubtitle'))
+        push('#METACOVER#',    needUrl(get('metacover', 'meta_cover', 'metaCover'), 'metacover'))  // 975×540
+        push('#METAURL#',      needUrl(get('metaurl', 'meta_url', 'metaUrl'), 'metaurl'))
+        break
+      } 
+      default:
+        throw new Error(`[ark] 不支持的 template_id: ${template_id}，可选 23 / 24 / 37`)
+    }
+    return { type: 'ark', ark: { template_id: id, kv } }
+  },
+  ark23(data = {}){
+    return this.ark(23, data)
+  },
+  ark24(data = {}){
+    return this.ark(24, data)
+  },
+  ark37(data = {}){
+    return this.ark(37, data)
   }
 })
 

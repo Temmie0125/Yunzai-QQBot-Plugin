@@ -355,16 +355,35 @@ export const buildMethods = {
                     data.smallbtn = true
                     continue
                 case "card":
-                    const url = i.url ?? i.data?.url
+                    let description = String(i.description ?? i.data?.description)
+                    let pic_url = String(i.pic_url ?? i.data?.pic_url)
+                    let title = String(i.title ?? i.data?.title)
+                    let url = String(i.url ?? i.data?.url)
+                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    if (!description || !pic_url || !title || !url){
+                        throw new Error('description、pic_url、title、url均为必填值')
+                    }
+                    if (!url?.startsWith('https://')) {
+                        throw new Error('url必须使用https协议')
+                    }
+                    if (!(pic_url.startsWith('https://') || pic_url.startsWith('http://'))){
+                        throw new Error('pic_url无效')
+                    }
+                    /*if (url.length > 1024) {
+                        throw new Error('url超出1024长度限制')
+                    }
+                    if (pic_url.length > 1024) {
+                        throw new Error('pic_url超出1024长度限制')
+                    }*/
                     messages.push({
                         type: "card",
                         data: {
                             type: "tuwen",
                             content: {
-                                description: i.description || i.data?.description,
-                                pic_url: i.pic_url || i.data?.pic_url,
-                                title: i.title || i.data?.title,
-                                url: url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                                description: description.length <= 50 ? description : description.slice(0, 49) + '…',
+                                pic_url: pic_url,
+                                title: title.length <= 50 ? title : title.slice(0, 49) + '…',
+                                url: url
                             }
                         }
                     })
@@ -595,15 +614,35 @@ export const buildMethods = {
                     data.smallbtn = true
                     continue
                 case "card":
+                    let description = String(i.description ?? i.data?.description)
+                    let pic_url = String(i.pic_url ?? i.data?.pic_url)
+                    let title = String(i.title ?? i.data?.title)
+                    let url = String(i.url ?? i.data?.url)
+                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    if (!description || !pic_url || !title || !url){
+                        throw new Error('description、pic_url、title、url均为必填值')
+                    }
+                    if (!url?.startsWith('https://')) {
+                        throw new Error('url必须使用https协议')
+                    }
+                    if (!(pic_url.startsWith('https://') || pic_url.startsWith('http://'))){
+                        throw new Error('pic_url无效')
+                    }
+                    /*if (url.length > 1024) {
+                        throw new Error('url超出1024长度限制')
+                    }
+                    if (pic_url.length > 1024) {
+                        throw new Error('pic_url超出1024长度限制')
+                    }*/
                     messages.push({
                         type: "card",
                         data: {
                             type: "tuwen",
                             content: {
-                                description: i.description || i.data?.description,
-                                pic_url: i.pic_url || i.data?.pic_url,
-                                title: i.title || i.data?.title,
-                                url: i.url || i.data?.title
+                                description: description.length <= 50 ? description : description.slice(0, 49) + '…',
+                                pic_url: pic_url,
+                                title: title.length <= 50 ? title : title.slice(0, 49) + '…',
+                                url: url
                             }
                         }
                     })
@@ -727,15 +766,35 @@ export const buildMethods = {
                     data.smallbtn = true
                     continue
                 case "card":
+                    let description = String(i.description ?? i.data?.description)
+                    let pic_url = String(i.pic_url ?? i.data?.pic_url)
+                    let title = String(i.title ?? i.data?.title)
+                    let url = String(i.url ?? i.data?.url)
+                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    if (!description || !pic_url || !title || !url){
+                        throw new Error('description、pic_url、title、url均为必填值')
+                    }
+                    if (!url?.startsWith('https://')) {
+                        throw new Error('url必须使用https协议')
+                    }
+                    if (!(pic_url.startsWith('https://') || pic_url.startsWith('http://'))){
+                        throw new Error('pic_url无效')
+                    }
+                    /*if (url.length > 1024) {
+                        throw new Error('url超出1024长度限制')
+                    }
+                    if (pic_url.length > 1024) {
+                        throw new Error('pic_url超出1024长度限制')
+                    }*/
                     messages.push({
                         type: "card",
                         data: {
                             type: "tuwen",
                             content: {
-                                description: i.description || i.data?.description,
-                                pic_url: i.pic_url || i.data?.pic_url,
-                                title: i.title || i.data?.title,
-                                url: i.url || i.data?.title
+                                description: description.length <= 50 ? description : description.slice(0, 49) + '…',
+                                pic_url: pic_url,
+                                title: title.length <= 50 ? title : title.slice(0, 49) + '…',
+                                url: url
                             }
                         }
                     })

@@ -389,6 +389,10 @@ segment.buble()
 
 - segment.link(text,link) 用于构造跳转链接文本按钮
 
+- segment.ark(template_id, data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
+
+- segment.ark23(data)、segment.ark24(data)、segment.ark37(data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
+
 </details>
 
 ## 其他
