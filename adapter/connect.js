@@ -76,6 +76,8 @@ export const connectMethods = {
             get pickUser() { return this.pickFriend },
             getFriendMap() { return this.fl },
             fl: await this.getFriendMap(id),
+            getFriendList: () => Bot[id].sdk.getFriendList().then((list) => list.filter(f => f.user_id)),
+            getFriendArray: () => Bot[id].sdk.getFriendList(),
 
             // 用户资料缓存（非好友表）：群成员/退群成员资料兜底，见 pick.js setUserMap
             users: await this.getUserMap(id),
@@ -118,7 +120,8 @@ export const connectMethods = {
                 return systemMsg
             },
 
-            callback: {},
+            getGroupList: () => Bot[id].sdk.getGroupList().then((list) => list.filter(g => g.group_id)),
+            getGroupArray: () => Bot[id].sdk.getGroupList(),
         }
 
         Bot[id].sdk.logger = {}
@@ -127,7 +130,6 @@ export const connectMethods = {
                 if (args[0]?.startsWith?.("recv from")) return
                 return Bot.makeLog(i, args, id)
             }
-
         // 用 secret 自动获取 access_token（弃用旧的静态 token 字段）
         try {
             await Bot[id].sdk.sessionManager.getAccessToken()

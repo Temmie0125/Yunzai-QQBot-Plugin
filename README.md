@@ -248,7 +248,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 群信息接口，可通过以下方式获取群信息`e.group.getGroupInfo()`、`e.bot.pickGroup(group_id).getGroupInfo()`
 
-- 群bot状态接口，可通过以下方式获取群bot状态`e.group.getGroupBotInfo()`、`e.bot.pickGroup(group_id).getGroupBotInfo()`
+- 群bot状态接口，可通过以下方式获取群bot状态`e.group.getGroupBotInfo(force)`、`e.bot.pickGroup(group_id).getGroupBotInfo(force)`,这里force指是否强制通过api刷新，如果不填自动从gml中获取
 
 - 群成员信息接口，可通过以下方式获取群成员信息`e.member.getGroupMemberInfo()`、`e.group.pickMember(user_id).getGroupMemberInfo()`、`e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo()`
 
@@ -322,6 +322,10 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 素材管理接口`e.bot.sdk.uploadMediaImage(file,filename)`、`e.bot.sdk.getMediaImages()`、`e.bot.sdk.deleteMediaImage(media_id)`, 上传、列表、删除素材
 
+- 群列表接口`e.bot.getGroupList()`和`e.bot.getGroupArray()`分别返回group_id数组和group对象数组
+
+- 用户列表接口`e.bot.getFriendList()`和`e.bot.getFriendArray()`分别返回user_id数组和user对象数组
+
 </details>
 
 <details><summary>发送msg_type=8的卡片</summary>
@@ -381,6 +385,26 @@ segment.buble()
   - 单图限制10MB以内
   - 最后一次使用起90天未使用则自动失效
   - 单机器人100张上限（可通过删除接口释放），有点鸡肋，看着用吧
+
+</details>
+
+<details><summary>额外的segment构造器支持</summary>
+
+- segment.card(data) 可以用于构造msg_type=8的卡片
+
+- segment.small() 可以用于小按钮
+
+- segment.buble(data) 可以用于气泡按钮构造，data结构参考按钮
+
+- segment.inlinecmd(text,input,enter,reply) 用于构造mqqapi文本按钮
+
+- segment.qqbotcmd(text,input,enter,reply) 用于构造qqbot-cmd文本按钮
+
+- segment.link(text,link) 用于构造跳转链接文本按钮
+
+- segment.ark(template_id, data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
+
+- segment.ark23(data)、segment.ark24(data)、segment.ark37(data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
 
 </details>
 
