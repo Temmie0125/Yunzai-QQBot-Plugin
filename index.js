@@ -54,7 +54,8 @@ Object.assign(global.segment, {
     }
     const need = (v, name) => {
       const s = _str(v)
-      if (!s) throw new Error(`[ark ${id}] ${name} 必填`)
+      //if (!s) throw new Error(`[ark ${id}] ${name} 必填`)
+      if (!s) return ''
       return s
     }
     const needUrl = (v, name) => {
@@ -81,7 +82,7 @@ Object.assign(global.segment, {
             if (_str(link)) obj_kv.push({ key: 'link', value: needUrl(link, 'list[].link') })
             return { obj_kv }
           })
-        if (!list.length) throw new Error(`[ark 23] list 不能为空`)
+        //if (!list.length) throw new Error(`[ark 23] list 不能为空`)
         kv.push({ key: '#LIST#', obj: list })
         break
       }
@@ -106,7 +107,7 @@ Object.assign(global.segment, {
       default:
         throw new Error(`[ark] 不支持的 template_id: ${template_id}，可选 23 / 24 / 37`)
     }
-    return { type: 'ark', ark: { template_id: id, kv } }
+    return { type: 'ark', template_id: id, kv }
   },
   ark23(data = {}){
     return this.ark(23, data)
