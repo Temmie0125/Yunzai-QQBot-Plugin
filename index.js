@@ -42,6 +42,8 @@ Object.assign(global.segment, {
   ark(template_id, data = {}){
     const id = Number(template_id)
     const kv = []
+    const _str = (v) => typeof v === 'number' ? String(v)
+      : (typeof v === 'string' ? v.trim() : '')
     const get = (...names) => {
       for (const n of names) {
         for (const k of Object.keys(data)) {
