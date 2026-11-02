@@ -12,9 +12,18 @@ TRSS-Yunzai QQBot 适配器 插件(自用修改版)
 
 1. 准备：[TRSS-Yunzai](../../../Yunzai)
 2. 在yunzai根目录使用
+
 ```
 git clone https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin.git ./plugins/QQBot-Plugin
 ```
+
+若是不想登录gitee，可选gitcode源
+
+```
+git clone https://gitcode.com/wind-trace/Yunzai-QQBot-Plugin.git ./plugins/QQBot-Plugin
+```
+
+
 3. 打开：[QQ 开放平台](https://q.qq.com) 创建 Bot：  
 ① 创建机器人  
 ② 开发设置 → 得到 `机器人QQ号`、`AppID`、`Token`、`AppSecret`  

@@ -359,7 +359,7 @@ export const buildMethods = {
                     let pic_url = String(i.pic_url ?? i.data?.pic_url)
                     let title = String(i.title ?? i.data?.title)
                     let url = String(i.url ?? i.data?.url)
-                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    //url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
                     if (!description || !pic_url || !title || !url){
                         throw new Error('description、pic_url、title、url均为必填值')
                     }
@@ -618,7 +618,7 @@ export const buildMethods = {
                     let pic_url = String(i.pic_url ?? i.data?.pic_url)
                     let title = String(i.title ?? i.data?.title)
                     let url = String(i.url ?? i.data?.url)
-                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    //url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
                     if (!description || !pic_url || !title || !url){
                         throw new Error('description、pic_url、title、url均为必填值')
                     }
@@ -770,7 +770,7 @@ export const buildMethods = {
                     let pic_url = String(i.pic_url ?? i.data?.pic_url)
                     let title = String(i.title ?? i.data?.title)
                     let url = String(i.url ?? i.data?.url)
-                    url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
+                    //url = url?.includes('?') ? `${url}&qq_aio_chat_type=3` : `${url}?qq_aio_chat_type=3`
                     if (!description || !pic_url || !title || !url){
                         throw new Error('description、pic_url、title、url均为必填值')
                     }
