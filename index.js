@@ -119,7 +119,10 @@ Object.assign(global.segment, {
     return this.ark(37, data)
   },
   action_button(data = {}){
-    return {type: 'action_button', data}
+    return { type: 'action_button', data }
+  },
+  stream(data = {}){
+    return { type: 'stream', data}
   }
 })
 

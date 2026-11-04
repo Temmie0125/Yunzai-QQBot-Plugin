@@ -67,13 +67,6 @@ git clone https://gitcode.com/wind-trace/Yunzai-QQBot-Plugin.git ./plugins/QQBot
 
 </details>
 
-<details><summary>新增分享链接获取</summary>
-
-- 调用方式e.getGenerateUrl(callback_data),callback_data类型为string(32)，会在机器人新增好友时传入(⚠经测试仅wh能够收到这个callback_data，ws没有)，参考使用[🔗分享链接.js](https://gitee.com/wind-trace-typ/wind-js/blob/master/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5.js)
-- 如果需要接收新增好友事件并进行处理还需要修改qq-group-bot依赖(❗现改为@windtrace/qq-group-bot,无需手动修改)，改动参考[🔗依赖改动.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
-
-</details>
-
 <details><summary>新增字段</summary>
 
 - e.platform，私信/群聊/临时会话/频道私信/频道/频道临时会话分别为`QQ-private`、`QQ-group`、`QQ-group-member`、`guild-private`、`guild-channel`、`guild-channel-member`
@@ -93,7 +86,7 @@ git clone https://gitcode.com/wind-trace/Yunzai-QQBot-Plugin.git ./plugins/QQBot
 
 user_id仅用:分割，以免数据迁移有问题
 
-<details><summary>新增文件发送功能(当前仅私聊可发送)</summary>
+<details><summary>新增文件发送功能</summary>
 
 - 使用方法this.reply(segment.file(file,filename))，此功能需额外修改qq-group-bot依赖(❗现改为@windtrace/qq-group-bot,无需手动修改)，修改参考[🔗依赖改动.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/%E4%BE%9D%E8%B5%96%E6%94%B9%E5%8A%A8.md)
 
@@ -126,6 +119,8 @@ async accept() {
 
 <details><summary>新增支持引用以及解析用户引用消息</summary>
 
+- 当前可通过`e.getReply()`获取当前消息引用的消息（如果开启消息存储，那么可以得到完整的消息内容及结构，不开启也可以得到消息基础内容）
+
 - 如果需要引用用户消息（当前仅私信可以艾特，且尽量在使用普通消息才引用，目前markdown使用引用后会有bug），可使用`segment.reply(e.msg_idx)`,如果需要引用用户引用的消息可使用`segment.reply(e.ref_msg_idx)`，用户引用的消息内容为e.msg_elements,当前可解析到用户引用的`文字`，`face表情`，`图片`，`语音`，`视频`，`文件`，官机的艾特等详细信息(参考[🔗msg_elements.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/msg_elements.md))，当前还无法解析到卡片，ark，转发消息，普通用户艾特等详细信息，如果不想使用segment.reply想直接使用`this.reply(msg,quote)`，可修改`Yunzai/lib/plugins/loader.js`的435-440行的
 
 ```
@@ -156,7 +151,7 @@ async accept() {
 
 <details><summary>新增C2C流式信息</summary>
 
-- 可在`config/QQBot.yaml`中将`steam`值改成`true`全局开启（发送失败或无法使用流式的消息会自动回退正常发送），也可不全局开启，在需要使用的地方加上`segment.custom('stream')`或`segment.custom('stream',{chunkSize,delay})`这里chunkSize为每次显示的字符数，delay为每次显示的延迟(ms)，如果不填则使用`config/QQBot.yaml`中的默认值，或者在`Yunzai/lib/plugins/loader.js`的435-440行下面添加
+- 可在`config/QQBot.yaml`中将`steam`值改成`true`全局开启（发送失败或无法使用流式的消息会自动回退正常发送），也可不全局开启，在需要使用的地方加上`segment.stream()`或`segment.stream({chunkSize,delay})`这里chunkSize为每次显示的字符数，delay为每次显示的延迟(ms)，如果不填则使用`config/QQBot.yaml`中的默认值，或者在`Yunzai/lib/plugins/loader.js`的435-440行下面添加
 
 ```
     if (data.stream) {
@@ -171,13 +166,13 @@ async accept() {
 
 <details><summary>支持自定义图床</summary>
 
-- 可自行在example目录中加入js定义Bot.imageToUrl图片上传函数，返回上传得到的图片url，本插件会如果检测到该函数存在就会优先使用，可直接使用或参考我的[cnb图床.js](https://gitee.com/wind-trace-typ/cnb-image-bed)
+- 可自行在example目录中加入js定义Bot.imageToUrl图片上传函数，返回上传得到的图片url，本插件会如果检测到该函数存在就会优先使用，可直接使用或参考我的[ImageBed-Plugin](https://gitee.com/wind-trace-typ/ImageBed-Plugin)
 
 </details>
 
 <details><summary>支持自定义markdown模板处理</summary>
 
-- 可自行在example目录中加入js定义Bot.makeMarkdownMsg图片上传函数，返回上传得到的图片url，本插件会如果检测到该函数存在就会优先使用,例:
+- 可自行在example目录中加入js定义Bot.makeMarkdownMsg的markdown模板构造函数，返回构造好的消息体，本插件会如果检测到该函数存在就会优先使用,例:
 
 ```
 Bot.makeMarkdownMsg = async (data, msg) => {
@@ -185,12 +180,6 @@ Bot.makeMarkdownMsg = async (data, msg) => {
     return messages //返回处理好的消息
 }
 ```
-
-</details>
-
-<details><summary>新增C2C输入状态修改</summary>
-
-- 默认有消息传入时会有30s正在输入的显示，一旦用户再次发送或者机器人发送了消息，这个状态会自动打断，如果想主动使用正在输入的状态，可使用`e.sendInputNotify(seconds)`,seconds为显示状态改变的时间，可以不填使用`e.sendInputNotify()`，这样默认改变30s
 
 </details>
 
@@ -210,37 +199,11 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
-<details><summary>主动获取群成员信息(悲报此接口权限仅开放了一天半就被拿下了，暂时无使用权限)</summary>
-
-- 在插件中，可以通过以下几种方式获取指定用户信息
-
-```
-  await e.member.getGroupMemberInfo() //直接获取当前用户的群成员信息
-  await e.group.pickMember(user_id).getGroupMemberInfo() //获取当前群指定用户信息
-  await e.bot.pickGroup(group_id).pickMember(user_id).getGroupMemberInfo() //获取指定群指定用户信息
-  如果需要获取自己bot信息，可以使用
-  await e.group.pickMember(e.bot_opneid).getGroupMemberInfo() //获取当前bot信息e.bot_openid为当前bot的openid当在全量群艾特机器人后会自动记录，请在使用前自行确保e.bot_openid存在
-  或使用await e.getBotInfo()获取bot信息,仍然需要在记录bot的openid后使用
-```
-
-- 本接口返回信息是已经经过处理过的，并非官方返回的原始结构，大致结构如下：
-
-```
-{
-  "openid": "用户openid",
-  "unionid": "用户unionid",
-  "avatar": "用户头像",
-  "card": "用户昵称",
-  "nickname": "用户昵称",
-  "join_time": 入群时间戳,
-  "role": "当前用户在群中身份，owner/admin/member对应群主/管理员/群员",
-  "bot": 是否bot
-}
-```
-
-</details>
-
 <details><summary>新增接口</summary>
+
+- 输入状态修改接口，可通过以下方式修改输入状态`e.sendInputNotify(seconds)`,seconds为显示状态改变的时间，可以不填使用`e.sendInputNotify()`，这样默认改变30s，默认有消息传入时会有30s正在输入的显示，一旦用户再次发送或者机器人发送了消息，这个状态会自动打断，如果想主动使用正在输入的状态
+
+- 获取机器人分享链接（带回调数据）,`e.getGenerateUrl(callback_data)`,callback_data类型为string(32)，会在机器人新增好友时传入，参考使用[🔗分享链接.js](https://gitee.com/wind-trace-typ/wind-js/blob/master/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5.js)
 
 - 群信息接口，可通过以下方式获取群信息`e.group.getGroupInfo()`、`e.bot.pickGroup(group_id).getGroupInfo()`
 
@@ -322,45 +285,13 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 用户列表接口`e.bot.getFriendList()`和`e.bot.getFriendArray()`分别返回user_id数组和user对象数组
 
-</details>
-
-<details><summary>发送msg_type=8的卡片</summary>
-
-- 在插件中可以使用以下方式发送msg_type=8的卡片
-
-```
-segment.custom('card',{
-  description:'xxx',
-  pic_url: 'xxx',
-  title: 'xxx',
-  url: 'xxx'
-})
-或者
-segment.card({
-  description:'xxx',
-  pic_url: 'xxx',
-  title: 'xxx',
-  url: 'xxx'
-})
-```
+- 引用消息内容获取`e.getReply()`获取当前消息引用的消息（如果开启消息存储，那么可以得到完整的消息内容及结构，不开启也可以得到消息基础内容）
 
 </details>
 
 <details><summary>支持QQBot api自由切换</summary>
 
 - 目前QQBot支持两个api使用新api:`https://api.bot.qq.com`和旧api:`https://api.sgroup.qq.com`，可使用`#QQBot切换api`并根据提示切换使用的api，当然这两个api仅在非沙箱环境下可用，沙箱环境下只使用旧api`https://sandbox.api.sgroup.qq.com`
-
-</details>
-
-<details><summary>气泡按钮</summary>
-
-- 在插件中可以使用以下方式发送气泡按钮,
-- 按钮写法参考[🔗按钮写法.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/按钮写法.md),其中将segment.button改为调用segment.buble即可，其他写法基本相同。
-- 注意：气泡按钮只显示三个，所以写多了没用，适配器会自动取前三个可用的按钮生成
-
-```
-segment.buble()
-```
 
 </details>
 
@@ -392,9 +323,9 @@ segment.buble()
   - title: String 卡片标题 必填
   - url: String 卡片跳转链接 必填
 
-- segment.small() 可以用于小按钮
+- segment.small() 可以用于小按钮，消息中携带后会使得本条消息携带的按钮变成小按钮
 
-- segment.buble(data) 可以用于气泡按钮构造，data结构参考按钮
+- segment.buble(data) 可以用于气泡按钮构造，data结构参考按钮，注意气泡按钮仅展示前三个，而且会被新消息刷掉，写法参考[🔗按钮写法.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/按钮写法.md),其中将segment.button改为调用segment.buble即可，其他写法基本相同。
 
 - segment.inlinecmd(text,input,enter,reply) 用于构造mqqapi文本按钮
 
@@ -412,6 +343,10 @@ segment.buble()
   - tts: Boolean 暂时不清楚用处
   - re_generate: Boolean 是否显示刷新消息按钮
   - stop_generate: Boolean 暂时不清楚用处
+
+- segment.stream(data), 用于发送流式消息，data有以下几个参数
+  - chunkSize: Number 分片大小，默认1024
+  - delay: Number 分片延迟，默认1000
 
 </details>
 
