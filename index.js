@@ -117,6 +117,9 @@ Object.assign(global.segment, {
   },
   ark37(data = {}){
     return this.ark(37, data)
+  },
+  action_button(data = {}){
+    return {type: 'action_button', data}
   }
 })
 

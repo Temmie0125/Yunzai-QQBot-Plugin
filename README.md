@@ -386,7 +386,11 @@ segment.buble()
 
 <details><summary>额外的segment构造器支持</summary>
 
-- segment.card(data) 可以用于构造msg_type=8的卡片
+- segment.card(data) 可以用于构造msg_type=8的卡片，data有以下参数
+  - description: String 卡片描述 必填
+  - pic_url: String 卡片图片url 必填
+  - title: String 卡片标题 必填
+  - url: String 卡片跳转链接 必填
 
 - segment.small() 可以用于小按钮
 
@@ -401,6 +405,13 @@ segment.buble()
 - segment.ark(template_id, data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
 
 - segment.ark23(data)、segment.ark24(data)、segment.ark37(data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
+
+- segment.action_button(data), 用于构造附带消息反馈的消息（必须附带非空的消息）。data有以下几个参数
+  - callback_data: String 回调信息
+  - feedback: Boolean 是否显示点赞或点踩
+  - tts: Boolean 暂时不清楚用处
+  - re_generate: Boolean 是否显示刷新消息按钮
+  - stop_generate: Boolean 暂时不清楚用处
 
 </details>
 

@@ -236,7 +236,7 @@ export const buildMethods = {
     },
 
     async makeRawMarkdownMsg(data, msg) {
-        const messages = [], button = [], keyboard = [], buble = []
+        const messages = [], button = [], keyboard = [], buble = [], action_button = []
         let content = "", reply
 
         const msgArray = Array.isArray(msg) ? msg : [msg]
@@ -388,6 +388,12 @@ export const buildMethods = {
                         }
                     })
                     break
+                case "action_button":
+                    action_button.push({
+                        type: "action_button",
+                        ...i.data
+                    })
+                    break
                 default:
                     content += await this.makeRawMarkdownText(data, Bot.String(i), button)
             }
@@ -422,6 +428,13 @@ export const buildMethods = {
             for (const i of messages) {
                 if (i[0].type === "markdown")
                     i.push(...buble)
+            }
+        }
+
+        if (action_button.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown")
+                    i.push(...action_button)
             }
         }
 
@@ -491,7 +504,7 @@ export const buildMethods = {
     },
 
     async makeMarkdownMsg(data, msg) {
-        const messages = [], button = [], templates = [[]], keyboard = []
+        const messages = [], button = [], templates = [[]], keyboard = [], action_button = [], buble = []
         let content = "", reply, template = templates[0]
 
         const msgArray = Array.isArray(msg) ? msg : [msg]
@@ -585,6 +598,9 @@ export const buildMethods = {
                     if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
                     break
+                case "buble":
+                    buble.push(...this.makeButtons(data, i.data, true))
+                    break
                 case "reply":
                     if (i.id.startsWith("event_"))
                         reply = { type: "reply", event_id: i.id.replace(/^event_/, "") }
@@ -647,6 +663,12 @@ export const buildMethods = {
                         }
                     })
                     break
+                case "action_button":
+                    action_button.push({
+                        type: "action_button",
+                        ...i.data
+                    })
+                    break
                 default: {
                     const [text, temp] = this.makeMarkdownText(data, Bot.String(i), content, button)
                     if (Array.isArray(temp)) {
@@ -664,7 +686,6 @@ export const buildMethods = {
         if (content)
             template.push(content)
         messages.push(...this.makeMarkdownTemplate(data, templates))
-
 
         if (keyboard.length) {
             for (const i of messages) {
@@ -685,6 +706,20 @@ export const buildMethods = {
                     ...button.splice(0, 5),
                 ])
         }
+        
+        if (buble.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown")
+                    i.push(...buble)
+            }
+        }
+
+        if (action_button.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown")
+                    i.push(...action_button)
+            }
+        }
 
         if (reply) for (const i of messages)
             i.unshift(reply)
@@ -692,7 +727,7 @@ export const buildMethods = {
     },
 
     async makeMsg(data, msg) {
-        const messages = [], button = []
+        const messages = [], button = [], action_button = [], buble = []
         let message = [], reply
 
         for (let i of Array.isArray(msg) ? msg : [msg]) {
@@ -746,6 +781,9 @@ export const buildMethods = {
                 case "button":
                     //button.push(...this.makeButtons(data, i.data))
                     continue
+                case "buble":
+                    buble.push(...this.makeButtons(data, i.data, true))
+                    break
                 case "node":
                     for (const { message } of i.data)
                         messages.push(...(await this.makeMsg(data, message)))
@@ -799,6 +837,12 @@ export const buildMethods = {
                         }
                     })
                     break
+                case "action_button":
+                    action_button.push({
+                        type: "action_button",
+                        ...i.data
+                    })
+                    break
                 default:
                     i = { type: "text", text: Bot.String(i) }
             }
@@ -814,6 +858,21 @@ export const buildMethods = {
                 type: "keyboard",
                 content: { rows: button.splice(0, 5) },
             }])
+        
+        
+        if (buble.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown" || i[0].type === "text")
+                    i.push(...buble)
+            }
+        }
+
+        if (action_button.length) {
+            for (const i of messages) {
+                if (i[0].type === "markdown" || i[0].type === "text")
+                    i.push(...action_button)
+            }
+        }
 
         if (reply) for (const i of messages)
             i.unshift(reply)

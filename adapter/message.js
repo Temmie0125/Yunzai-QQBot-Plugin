@@ -98,62 +98,147 @@ export const messageMethods = {
             Bot.makeLog("debug", ["回复按钮点击事件错误", err], data.self_id)
         } }
 
-        if (event.data.type === 2002 || event.data.type === 2001) return
+        let user = event.user_id ? await Bot[id].fl.get(`${id}${this.sep}${event.user_id}`) : {}
 
-        // 私信主动推送
-        if (event.data?.resolved?.authorize_data?.opt_scene === "setting" && event.data?.resolved?.authorize_data?.scope === "c2c_push") {
-            const user_id = `${id}${this.sep}${event.operator_id}`
-            let user = await Bot[id].fl.get(user_id)
-            const enabled = !!event.data?.resolved?.authorize_data?.switch
-            logger.info(`[U:${user?.nickname || ""}(${user_id})]${enabled ? "开启" : "关闭"}私信主动推送`)
-            if (!Bot.disablePushUsers.get(id)) {
-                Bot.disablePushUsers.set(id, new Set())
-            }
-            if (enabled) {
-                // 开启：从关闭列表中移除
-                Bot.disablePushUsers.get(id)?.delete(user_id)
-                await redis.sRem(`wind-disable-push-users:${id}`, user_id)
-            } else {
-                // 关闭：记录进内存 Map 与 redis
-                Bot.disablePushUsers.get(id)?.add(user_id)
-                await redis.sAdd(`wind-disable-push-users:${id}`, user_id)
-            }
-            return
-        }
-
-        let user = await Bot[id].fl.get(`${id}${this.sep}${event.operator_id}`)
-
-        const data = {
+        let data = {
             event_id: event.event_id,
             raw: event,
             raw_event: event.raw,
             bot: Bot[id],
             self_id: id,
-            post_type: "message",
-            message_id: event.event_id ? `event_${event.event_id}` : event.notice_id,
+            post_type: event.post_type,
+            message_id: event.message_id ? event.message_id : `event_${event.event_id}`,
             message_type: event.notice_type,
-            sub_type: "callback",
-            get openid() { return this.sender.openid },
-            get unionid() { return this.sender.unionid },
-            get user_id() { return this.sender.user_id },
-            get nickname() { return this.sender.nickname },
-            get avatar() { return this.sender.avatar },
-            set avatar(newAvatar) { this.sender.avatar = newAvatar },
-            sender: {
-                user_id: `${id}${this.sep}${event.operator_id}`,
-                bot: event.author?.bot || user?.bot || false,
-                avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.operator_id}/0`,
-                unionid: event.union_openid || user?.unionid || "",
-                openid: event.operator_id || user?.openid || "",
-                nickname: event.user_name || user?.nickname || ""
-            },
-            message: [{ type: "text", text: event.data?.resolved?.button_data || "" }],
-            raw_message: event.data?.resolved?.button_data || "",
             platform: `QQ-${event.notice_type === "group" ? "group" : "private"}`,
             time: event.timestamp
         }
 
-        event.reply(0)
+        if (event.user_id) { // 部分互动事件没有userid
+            Object.assign(data, {
+                get openid() { return this.sender.openid },
+                get unionid() { return this.sender.unionid },
+                get user_id() { return this.sender.user_id },
+                get nickname() { return this.sender.nickname },
+                get avatar() { return this.sender.avatar },
+                set avatar(newAvatar) { this.sender.avatar = newAvatar },
+                sender: {
+                    user_id: `${id}${this.sep}${event.user_id}`,
+                    bot: event.author?.bot || user?.bot || false,
+                    avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id}/0`,
+                    unionid: event.union_openid || user?.unionid || "",
+                    openid: event.user_id || user?.openid || "",
+                    nickname: event.user_name || user?.nickname || ""
+                },
+            })
+        }
+
+        if (data.message_type === "group") {
+            data.group_id = `${id}${this.sep}${event.group_id}`
+            let gml = data.bot.gml.get(data.group_id)
+            if (gml && event.user_id) {
+                user = gml.get(`${id}${this.sep}${event.user_id}`)
+            }
+            data.sender.role = event.author?.member_role || user?.role || "member"
+
+            let group_data = await data.bot.gl.get(data.group_id)
+            if (!group_data || !group_data?.group_name) {
+                try {
+                    group_data = await data.bot.sdk.getGroupInfo(event.group_id)
+                } catch (e) {
+                    group_data = null
+                    Bot.makeLog("warn", ["获取群信息失败", e], data.self_id)
+                }
+            }
+
+            data.group_data = group_data || {}
+            data.group_name = group_data?.group_name || ""
+        }
+
+        switch(event.type){ // 暂时只下发消息按钮回调和菜单回调，其他的仅作初步处理及日志输出，不下发事件
+            case 11:{
+                Object.assign(data, {
+                    post_type: "message",
+                    sub_type: "callback",
+                    message: [{ type: "text", text: event.data?.resolved?.button_data || "" }],
+                    raw_message: event.data?.resolved?.button_data || ""
+                })
+                event.reply(0)
+                break
+            }
+            case 12:{
+                Object.assign(data, {
+                    post_type: "message",
+                    sub_type: "callback",
+                    message: [{ type: "text", text: event.data?.resolved?.button_data || "" }],
+                    raw_message: event.data?.resolved?.button_data || ""
+                })
+                event.reply(0)
+                break
+            }
+            case 13:{
+                Object.assign(data, {
+                    sub_type: "feedback"
+                })
+                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.checked === 1 ? "" : "取消"}${event.optText}`, data.self_id)
+                return
+            }
+            case 14:{
+                Object.assign(data, {
+                    sub_type: "clearsession"
+                })
+                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]清空智能体会话历史`, data.self_id)
+                return
+            }
+            case 15:{
+                Object.assign(data, {
+                    sub_type: "inoutstory"
+                })
+                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.action === 'ENTER_STORY' ? '进入' : '退出'}故事集`, data.self_id)
+                return
+            }
+            case 16:{
+                Object.assign(data, {
+                    sub_type: "switchmodal"
+                })
+                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]用户切换智能体模型${event.action}`, data.self_id)
+                return
+            }
+            case 18:{
+                Object.assign(data, {
+                    sub_type: "userauthorize"
+                })
+                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.switch ? "开启" : "关闭"}私信主动推送`, data.self_id)
+                if (!Bot.disablePushUsers.get(data.self_id)) {
+                    Bot.disablePushUsers.set(data.self_id, new Set())
+                }
+                if (event.switch) {
+                    // 开启：从关闭列表中移除
+                    Bot.disablePushUsers.get(data.self_id)?.delete(data.user_id)
+                    await redis.sRem(`wind-disable-push-users:${data.self_id}`, data.user_id)
+                } else {
+                    // 关闭：记录进内存 Map 与 redis
+                    Bot.disablePushUsers.get(data.self_id)?.add(data.user_id)
+                    await redis.sAdd(`wind-disable-push-users:${data.self_id}`, data.user_id)
+                }
+                return
+            }
+            case 19:{
+                Object.assign(data, {
+                    sub_type: "groupauthorize"
+                })
+                Bot.makeLog("info", `[G:${data.group_name || ''}(${event.group_id}),U:${data?.nickname || ""}(${data.user_id})]${event.switch ? "开启" : "关闭"}群聊主动推送`, data.self_id)
+                return
+            }
+            case 20:{
+                Object.assign(data, {
+                    sub_type: "groupauthorizestatus"
+                })
+                if (event.data.type === 2002 || event.data.type === 2001){
+                    Bot.makeLog("info", '收到机器人管理页回调（目前无用）', data.self_id)
+                }
+                return
+            }  
+        }
 
         switch (data.message_type) {
             case "friend":
@@ -164,29 +249,8 @@ export const messageMethods = {
                 await this.setFriendMap(data)
                 break
             case "group":
-                data.group_id = `${id}${this.sep}${event.group_id}`
-                let gml = data.bot.gml.get(data.group_id)
-                if (gml) {
-                    user = gml.get(`${id}${this.sep}${event.operator_id}`)
-                }
-                data.sender.role = event.author?.member_role || user?.role || "member"
-
-                let group_data = await data.bot.gl.get(data.group_id)
-                if (!group_data || !group_data?.group_name) {
-                    try {
-                        group_data = await data.bot.sdk.getGroupInfo(event.group_id)
-                    } catch (e) {
-                        group_data = null
-                        Bot.makeLog("warn", ["获取群信息失败", e], data.self_id)
-                    }
-                }
-
-                data.group_data = group_data || {}
-                data.group_name = group_data?.group_name || ""
-
                 //await redis.set(`wind-group-event_id:${data.self_id}${this.sep}${event.group_id}`,event.event_id,{ EX:300 })
-                Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
-
+                Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_name || ''}(${data.group_id}), U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
                 data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
                 await this.setGroupMap(data)
                 break
