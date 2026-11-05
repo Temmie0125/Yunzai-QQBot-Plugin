@@ -108,7 +108,6 @@ export const messageMethods = {
             self_id: id,
             post_type: event.post_type,
             message_id: event.message_id ? event.message_id : `event_${event.event_id}`,
-            message_type: event.notice_type,
             platform: `QQ-${event.notice_type === "group" ? "group" : "private"}`,
             time: event.timestamp
         }
@@ -160,9 +159,35 @@ export const messageMethods = {
                     post_type: "message",
                     sub_type: "callback",
                     message: [{ type: "text", text: event.data?.resolved?.button_data || "" }],
-                    raw_message: event.data?.resolved?.button_data || ""
+                    raw_message: event.data?.resolved?.button_data || "",
+                    message_type: event.notice_type
                 })
                 event.reply(0)
+                switch (data.message_type) {
+                    case "friend":
+                        data.message_type = "private"
+                        Bot.makeLog("info", [`好友按钮点击事件：[U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
+
+                        data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                        await this.setFriendMap(data)
+                        break
+                    case "group":
+                        //await redis.set(`wind-group-event_id:${data.self_id}${this.sep}${event.group_id}`,event.event_id,{ EX:300 })
+                        Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_name || ''}(${data.group_id}), U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
+                        data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                        await this.setGroupMap(data)
+                        break
+                    case "guild":
+                        break
+                    default:
+                        Bot.makeLog("warn", ["未知按钮点击事件", event], data.self_id)
+                }
+
+                // 按钮点击也计为一次使用
+                recordMessage(data)
+
+                if (Bot.autoRecordMessage === true) saveMessage(data)
+
                 break
             }
             case 12:{
@@ -170,43 +195,130 @@ export const messageMethods = {
                     post_type: "message",
                     sub_type: "callback",
                     message: [{ type: "text", text: event.data?.resolved?.button_data || "" }],
-                    raw_message: event.data?.resolved?.button_data || ""
+                    raw_message: event.data?.resolved?.button_data || "",
+                    message_type: event.notice_type
                 })
                 event.reply(0)
+
+                data.message_type = "private"
+                Bot.makeLog("info", [`好友快捷菜单点击事件：[U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
+
+                data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                await this.setFriendMap(data)
+
+                // 按钮点击也计为一次使用
+                recordMessage(data)
+
                 break
             }
             case 13:{
                 Object.assign(data, {
-                    sub_type: "feedback"
+                    sub_type: "feedback",
+                    notice_type: event.notice_type
                 })
-                Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.checked === 1 ? "" : "取消"}${event.optText}`, data.self_id)
-                return
+                
+                switch (data.notice_type) {
+                    case "friend":
+                        data.notice_type = "private"
+                        Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.checked === 1 ? "" : "取消"}${event.optText}了消息${event.message_id ? `(${event.message_id})` : ''}`, data.self_id)
+
+                        data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                        await this.setFriendMap(data)
+                        break
+                    case "group":
+                        Bot.makeLog("info", `[G:${data.group_name || ''}(${data.group_id}), U:${data.nickname || ""}(${data.user_id})]${event.checked === 1 ? "" : "取消"}${event.optText}了消息${event.message_id ? `(${event.message_id})` : ''}`, data.self_id)
+                        data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                        await this.setGroupMap(data)
+                        break
+                    case "guild":
+                        break
+                    default:
+                        Bot.makeLog("warn", ["未知场景消息反馈事件", event], data.self_id)
+                }
+                break
             }
             case 14:{
                 Object.assign(data, {
-                    sub_type: "clearsession"
+                    sub_type: "clearsession",
+                    notice_type: event.notice_type
                 })
+                
+                switch (data.notice_type) {
+                    case "friend":
+                        data.notice_type = "private"
+                        data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                        await this.setFriendMap(data)
+                        break
+                    case "group":
+                        data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                        await this.setGroupMap(data)
+                        break
+                    case "guild":
+                        break
+                    default:
+                        Bot.makeLog("warn", ["未知场景清空会话事件", event], data.self_id)
+                }
                 Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]清空智能体会话历史`, data.self_id)
-                return
+                break
             }
             case 15:{
                 Object.assign(data, {
-                    sub_type: "inoutstory"
+                    sub_type: "inoutstory",
+                    notice_type: event.notice_type
                 })
+                
+                switch (data.notice_type) {
+                    case "friend":
+                        data.notice_type = "private"
+                        data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                        await this.setFriendMap(data)
+                        break
+                    case "group":
+                        data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                        await this.setGroupMap(data)
+                        break
+                    case "guild":
+                        break
+                    default:
+                        Bot.makeLog("warn", ["未知用户进退故事集事件", event], data.self_id)
+                }
                 Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.action === 'ENTER_STORY' ? '进入' : '退出'}故事集`, data.self_id)
-                return
+                break
             }
             case 16:{
                 Object.assign(data, {
-                    sub_type: "switchmodal"
+                    sub_type: "switchmodal",
+                    notice_type: event.notice_type
                 })
+                
+                switch (data.notice_type) {
+                    case "friend":
+                        data.notice_type = "private"
+                        data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                        await this.setFriendMap(data)
+                        break
+                    case "group":
+                        data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                        await this.setGroupMap(data)
+                        break
+                    case "guild":
+                        break
+                    default:
+                        Bot.makeLog("warn", ["未知场景切换模型事件", event], data.self_id)
+                }
                 Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]用户切换智能体模型${event.action}`, data.self_id)
-                return
+                break
             }
             case 18:{
                 Object.assign(data, {
-                    sub_type: "userauthorize"
+                    sub_type: "userauthorize",
+                    notice_type: event.notice_type
                 })
+                
+                data.notice_type = "private"
+                data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
+                await this.setFriendMap(data)
+
                 Bot.makeLog("info", `[U:${data.nickname || ""}(${data.user_id})]${event.switch ? "开启" : "关闭"}私信主动推送`, data.self_id)
                 if (!Bot.disablePushUsers.get(data.self_id)) {
                     Bot.disablePushUsers.set(data.self_id, new Set())
@@ -220,54 +332,44 @@ export const messageMethods = {
                     Bot.disablePushUsers.get(data.self_id)?.add(data.user_id)
                     await redis.sAdd(`wind-disable-push-users:${data.self_id}`, data.user_id)
                 }
-                return
+                break
             }
             case 19:{
                 Object.assign(data, {
-                    sub_type: "groupauthorize"
+                    sub_type: "groupauthorize",
+                    notice_type: event.notice_type
                 })
+
+                data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                await this.setGroupMap(data)
+                
                 Bot.makeLog("info", `[G:${data.group_name || ''}(${event.group_id}),U:${data?.nickname || ""}(${data.user_id})]${event.switch ? "开启" : "关闭"}群聊主动推送`, data.self_id)
-                return
+                break
             }
             case 20:{
                 Object.assign(data, {
-                    sub_type: "groupauthorizestatus"
+                    sub_type: "groupauthorizestatus",
+                    notice_type: event.notice_type
                 })
+
+                data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
+                await this.setGroupMap(data)
+
                 if (event.data.type === 2002 || event.data.type === 2001){
                     Bot.makeLog("info", '收到机器人管理页回调（目前无用）', data.self_id)
                 }
+                break
+            }
+            default:{
+                logger.warn(`未知事件类型：type:${event.type}`)
                 return
-            }  
+            }
         }
-
-        switch (data.message_type) {
-            case "friend":
-                data.message_type = "private"
-                Bot.makeLog("info", [`好友按钮点击事件：[U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
-
-                data.reply = msg => this.sendFriendMsg({ ...data, user_id: event.operator_id }, msg, { event_id: data.event_id })
-                await this.setFriendMap(data)
-                break
-            case "group":
-                //await redis.set(`wind-group-event_id:${data.self_id}${this.sep}${event.group_id}`,event.event_id,{ EX:300 })
-                Bot.makeLog("info", [`群按钮点击事件：[G:${data.group_name || ''}(${data.group_id}), U:${data.nickname}(${data.user_id})]`, data.raw_message], data.self_id)
-                data.reply = msg => this.sendGroupMsg({ ...data, group_id: event.group_id }, msg, { event_id: data.event_id })
-                await this.setGroupMap(data)
-                break
-            case "guild":
-                break
-            default:
-                Bot.makeLog("warn", ["未知按钮点击事件", event], data.self_id)
-        }
-
-        if (Bot.autoRecordMessage === true) saveMessage(data)
         // 黑名单拦截（在 Bot.em 下发事件前）
         if (this._checkBlacklist(data)) return
 
-        // 按钮点击也计为一次使用
-        recordMessage(data)
-
-        Bot.em(`${data.post_type}.${data.message_type}.${data.sub_type}`, data)
+        logger.info(`${data.post_type}.${data.message_type ?? data.notice_type}.${data.sub_type}`)
+        Bot.em(`${data.post_type}.${data.message_type ?? data.notice_type}.${data.sub_type}`, data)
     },
 
     async makeaudit(event) {

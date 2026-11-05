@@ -115,6 +115,25 @@ async accept() {
   }
 ```
 
+- 新增以下事件sub_type: 消息反馈`feedback`、清空会话`clearsession`、进入或退出故事集`inoutstory`、切换模型`switchmodal`、用户授权`userauthorize`、群授权`groupauthorize`、群授权状态变更`groupauthorizestatus`，插件中event设置为`notice.{notice_type}.{sub_type}`即可接收这些事件，部分事件可调用e.reply回复，以消息反馈事件为例：
+
+```
+export class feedback extends plugin {
+    constructor() {
+        super({
+            name: "feedback",
+            dsc: "feedback",
+            event: "notice.private.feedback"
+        });
+    }
+    async accept(){
+        /*
+            后续处理
+        */
+    }
+}
+```
+
 </details>
 
 <details><summary>新增支持引用以及解析用户引用消息</summary>
