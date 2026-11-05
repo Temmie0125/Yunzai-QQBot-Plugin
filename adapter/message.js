@@ -216,7 +216,8 @@ export const messageMethods = {
                     sub_type: "feedback",
                     notice_type: event.notice_type,
                     optText: event.optText,
-                    checked: event.checked
+                    checked: event.checked,
+                    callback_data: event.data?.resolved?.button_data || ""
                 })
                 
                 switch (data.notice_type) {
