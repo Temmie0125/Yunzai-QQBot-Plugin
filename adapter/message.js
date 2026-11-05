@@ -214,7 +214,9 @@ export const messageMethods = {
             case 13:{
                 Object.assign(data, {
                     sub_type: "feedback",
-                    notice_type: event.notice_type
+                    notice_type: event.notice_type,
+                    optText: event.optText,
+                    checked: event.checked
                 })
                 
                 switch (data.notice_type) {
