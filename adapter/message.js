@@ -136,8 +136,8 @@ export const messageMethods = {
             let gml = data.bot.gml.get(data.group_id)
             if (gml && event.user_id) {
                 user = gml.get(`${id}${this.sep}${event.user_id}`)
+                data.sender.role = event.author?.member_role || user?.role || "member"
             }
-            data.sender.role = event.author?.member_role || user?.role || "member"
 
             let group_data = await data.bot.gl.get(data.group_id)
             if (!group_data || !group_data?.group_name) {
@@ -360,6 +360,18 @@ export const messageMethods = {
 
                 if (event.data.type === 2002 || event.data.type === 2001){
                     Bot.makeLog("info", '收到机器人管理页回调（目前无用）', data.self_id)
+                    reply(0, {
+                        data: {
+                            "claw_cfg": {
+                                "channel_type": "qqbot",
+                                "channel_ver": "9.9.9",
+                                "claw_type": "wind",
+                                "claw_ver": "6666.66.66",
+                                "require_mention": "always",
+                                "online_state": "online"
+                            }
+                        }
+                    })
                 }
                 break
             }
