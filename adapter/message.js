@@ -131,7 +131,7 @@ export const messageMethods = {
             })
         }
 
-        if (data.message_type === "group") {
+        if (event.notice_type === "group") {
             data.group_id = `${id}${this.sep}${event.group_id}`
             let gml = data.bot.gml.get(data.group_id)
             if (gml && event.user_id) {
@@ -371,7 +371,6 @@ export const messageMethods = {
         // 黑名单拦截（在 Bot.em 下发事件前）
         if (this._checkBlacklist(data)) return
 
-        logger.info(`${data.post_type}.${data.message_type ?? data.notice_type}.${data.sub_type}`)
         Bot.em(`${data.post_type}.${data.message_type ?? data.notice_type}.${data.sub_type}`, data)
     },
 

@@ -359,9 +359,9 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 - segment.action_button(data), 用于构造附带消息反馈的消息（必须附带非空的消息）。data有以下几个参数
   - callback_data: String 回调信息
   - feedback: Boolean 是否显示点赞或点踩
-  - tts: Boolean 暂时不清楚用处
+  - tts: Boolean tts语音播放按钮
   - re_generate: Boolean 是否显示刷新消息按钮
-  - stop_generate: Boolean 暂时不清楚用处
+  - stop_generate: Boolean 停止生成按钮
 
 - segment.stream(data), 用于发送流式消息，data有以下几个参数
   - chunkSize: Number 分片大小，默认1024
