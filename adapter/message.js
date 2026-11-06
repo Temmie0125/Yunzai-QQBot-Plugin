@@ -98,8 +98,6 @@ export const messageMethods = {
             Bot.makeLog("debug", ["回复按钮点击事件错误", err], data.self_id)
         } }
 
-        let user = event.user_id ? await Bot[id].fl.get(`${id}${this.sep}${event.user_id}`) : {}
-
         let data = {
             event_id: event.event_id,
             raw: event,
@@ -112,7 +110,9 @@ export const messageMethods = {
             time: event.timestamp
         }
 
+        let user = {}
         if (event.user_id) { // 部分互动事件没有userid
+            user = event.user_id ? await Bot[id].fl.get(`${id}${this.sep}${event.user_id}`) : {}
             Object.assign(data, {
                 get openid() { return this.sender.openid },
                 get unionid() { return this.sender.unionid },
