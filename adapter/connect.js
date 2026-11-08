@@ -1,5 +1,6 @@
 // 连接 / WebHook / 加载方法
 import crypto from "node:crypto"
+import express from "express"
 import QRCode from "qrcode"
 import { config, configSave } from "./context.js"
 import { Bot as QQBot } from "@windtrace/qq-group-bot"
@@ -149,15 +150,18 @@ export const connectMethods = {
         req.res.send({ plain_token, signature })
     },
 
-    verifySignature(signature, timestamp, body, secret) {
+    // QQ 对 body 原始字节签名，优先使用路由级解析器保留的 req.rawBody
+    verifySignature(signature, timestamp, req, secret) {
         if (!signature || !timestamp)
             return false
         const sig = Buffer.from(signature, "hex")
-        
+
         if (sig.length !== 64 || (sig[63] & 224) !== 0)
             return false
         try {
-            const message = Buffer.from(`${timestamp}${JSON.stringify(body)}`)
+            const message = req.rawBody
+                ? Buffer.concat([Buffer.from(timestamp), req.rawBody])
+                : Buffer.from(`${timestamp}${JSON.stringify(req.body)}`)
             return crypto.verify(null, message, getEd25519Keys(secret).verifyKey, sig)
         } catch (err) {
             Bot.makeLog("warn", ["QQBot 签名验证异常", err], "QQBot-Plugin")
@@ -195,7 +199,7 @@ export const connectMethods = {
             return req.res.sendStatus(401)
         }
 
-        if (!this.verifySignature(signature, timestamp, req.body, bot.info.secret)) {
+        if (!this.verifySignature(signature, timestamp, req, bot.info.secret)) {
             Bot.makeLog("warn", "签名验证失败", appid)
             return req.res.sendStatus(401)
         }
@@ -223,7 +227,11 @@ export const connectMethods = {
     },
 
     async load() {
-        Bot.express.use(`/${this.name}`, this.makeWebHook.bind(this))
+        Bot.express.use(
+            `/${this.name}`,
+            express.json({ verify: (req, res, buf) => { req.rawBody = buf }, }),
+            this.makeWebHook.bind(this)
+        )
         Bot.express.quiet.push(`/${this.name}`)
         for (const bot of config.token)
             await Bot.sleep(5000, this.connect(bot))
