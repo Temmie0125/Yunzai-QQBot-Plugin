@@ -362,13 +362,13 @@ export const messageMethods = {
                     Bot.makeLog("info", '收到机器人管理页回调（目前无用）', data.self_id)
                     reply(0, {
                         data: {
-                            "claw_cfg": {
-                                "channel_type": "qqbot",
-                                "channel_ver": "9.9.9",
-                                "claw_type": "wind",
-                                "claw_ver": "6666.66.66",
-                                "require_mention": "always",
-                                "online_state": "online"
+                            claw_cfg: {
+                                channel_type: "qqbot",
+                                channel_ver: "9.9.9",
+                                claw_type: "wind",
+                                claw_ver: "6666.66.66",
+                                require_mention: "always",
+                                online_state: "online"
                             }
                         }
                     })

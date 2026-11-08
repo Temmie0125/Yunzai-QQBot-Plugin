@@ -364,8 +364,8 @@ Bot.makeMarkdownMsg = async (data, msg) => {
   - stop_generate: Boolean 停止生成按钮
 
 - segment.stream(data), 用于发送流式消息，data有以下几个参数
-  - chunkSize: Number 分片大小，默认1024
-  - delay: Number 分片延迟，默认1000
+  - chunkSize: Number 分片数量，默认2
+  - delay: Number 分片延迟，默认100
 
 </details>
 
