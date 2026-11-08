@@ -167,7 +167,7 @@ export const connectMethods = {
 
     makeWebHook(req) {
         if (req.method !== "POST"){
-            Bot.makeLog("warn", "请求方式非法", appid)
+            logger.warn("请求方式非法")
             return req.res.sendStatus(405)
         }
 
