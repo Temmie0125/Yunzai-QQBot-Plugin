@@ -1,6 +1,7 @@
 // 发送 / 撤回消息方法
 import { config } from "./context.js"
 import { saveSentMessage } from "../lib/message.js"
+import { recordSendErrors } from "../lib/errorStore.js"
 
 export const sendMethods = {
     async sendMsg(data, send, msg) {
@@ -8,7 +9,7 @@ export const sendMethods = {
         let msgs
 
         // 逐条 shift 发送，失败时返回剩余未发的消息
-        const sendMsg = async (msgList) => {
+        const sendMsg = async (msgList, attempt = 1) => {
             const pending = [...msgList]
             while (pending.length > 0) {
                 const segs = pending.shift()
@@ -22,7 +23,14 @@ export const sendMethods = {
                     if (Bot.autoRecordMessage === true) saveSentMessage(data, segs, ret)
                 } catch (err) {
                     Bot.makeLog("error", ["发送消息错误", segs, err], data.self_id)
-                    rets.error.push(err)
+                    rets.error.push({
+                        err:err.message,
+                        segs:segs,
+                        timestamp: Date.now(),
+                        msg: data?.msg,
+                        self_id: data?.self_id,
+                        attempt  
+                    })
                     return pending
                 }
             }
@@ -37,10 +45,10 @@ export const sendMethods = {
             msgs = data.legacy || (messages.length === 1 && messages[0].type === "image" && data.event_id?.startsWith("INTERACTION_CREATE")) ? await this.makeMsg(data, msg) : await this.makeRawMarkdownMsg(data, msg)
         }
 
-        let pending = await sendMsg(msgs)
+        let pending = await sendMsg(msgs, 1)
         if (pending.length > 0) {
             // 第二次：只重试失败的消息
-            pending = await sendMsg(pending)
+            pending = await sendMsg(pending, 2)
 
             if (pending.length > 0) {
                 // 第三次：切换格式，重建全部消息再发
@@ -49,18 +57,21 @@ export const sendMethods = {
                 } else {
                     msgs = await this.makeMsg(data, msg)
                 }
-                pending = await sendMsg(msgs)
+                pending = await sendMsg(msgs, 3)
 
                 if (pending.length > 0) {
                     // 第四次：纯文本兜底
                     msgs = await this.makeMsg(data, msg)
-                    await sendMsg(msgs)
+                    await sendMsg(msgs, 4)
                 }
             }
         }
 
         if (Array.isArray(data._ret_id))
             data._ret_id.push(...rets.message_id)
+
+        if (rets.error.length > 0 && config.recordSendErrors)
+            recordSendErrors(rets.error)
 
         return rets
     },

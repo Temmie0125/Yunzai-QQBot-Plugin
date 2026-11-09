@@ -369,6 +369,16 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 </details>
 
+<details><summary>报错统计</summary>
+
+- 借助webadapter可以查看最近报错统计以及报错类型统计，前提需到Yunzai/config/QQBot.yaml中将recordSendErrors设置为true(可在webadapter中设置)，默认为false不记录。
+
+- 最近报错可展示最近报错的详细信息、内容、时间等，报错类型统计可展示报错类型触发次数排序
+
+- 此统计仅统计sendMsg过程中从开放平台api返回的报错，其他如插件报错、消息解析报错等不统计
+
+</details>
+
 ## 其他
 
 - 当前可以配合[🔗qqbot-web-adapter插件](https://gitee.com/wind-trace-typ/QQBot-Web-Adapter)直接在网页端进行编辑设置以及添加新bot,具体参考下图
