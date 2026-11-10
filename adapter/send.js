@@ -24,6 +24,7 @@ export const sendMethods = {
                 } catch (err) {
                     Bot.makeLog("error", ["发送消息错误", segs, err], data.self_id)
                     rets.error.push({
+                        ...err.detail,
                         err:err.message,
                         segs:segs,
                         timestamp: Date.now(),

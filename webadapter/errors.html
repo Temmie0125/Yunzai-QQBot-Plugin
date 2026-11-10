@@ -108,7 +108,19 @@
         .tbl tr:last-child td { border-bottom: none; }
         .tbl tbody tr:hover { background: #f8f9fc; }
 
-        .err-text { white-space: pre-wrap; word-break: break-all; max-width: 240px; color: var(--danger); font-weight: 500; }
+        .api { font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 11.5px; max-width: 190px; }
+        .api-method { color: var(--accent); font-weight: 700; }
+        .api-url { word-break: break-all; }
+        .code-badge {
+            display: inline-block; padding: 1px 7px; border-radius: 999px; background: #fdf0ef;
+            color: var(--danger); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+        }
+        .msg-err { white-space: pre-wrap; word-break: break-all; max-width: 200px; color: var(--danger); font-weight: 500; }
+        .trace {
+            font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 11.5px;
+            color: var(--text-secondary); cursor: pointer; border-bottom: 1px dashed var(--border); white-space: nowrap;
+        }
+        .trace:hover { color: var(--accent); }
 
         .bot-cell { display: flex; align-items: center; gap: 8px; min-width: 120px; }
         .bot-cell img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); background: #eef0f3; flex: 0 0 auto; }
@@ -179,7 +191,8 @@
         @media (max-width: 640px) {
             .content { padding: 12px 12px 48px; }
             .section { padding: 12px; }
-            .err-text { max-width: 160px; }
+            .api { max-width: 150px; }
+            .msg-err { max-width: 160px; }
             .msg-cell { max-width: 300px; }
         }
     </style>
@@ -244,6 +257,30 @@
         const basename = f => String(f ?? "").split(/[\\/]/).pop()
 
         function fileUrl(name) { return FILE_API + encodeURIComponent(name) }
+
+        // 兼容新旧记录：新记录含 detail 平铺字段（url/code/err_code/message/trace_id/method），
+        // 旧记录从 err 文本解析（request "URL" error with code(N): 描述）
+        function errInfo(r = {}) {
+            let { url, method, code, err_code: errCode, message, trace_id: traceId, err } = r
+            if (!url || message == null) {
+                const m = String(err || "").match(/^request\s+"([^"]+)"\s+error with code\((\d+)\):\s*([\s\S]+)$/)
+                if (m) {
+                    url = url || m[1]
+                    code = code ?? m[2]
+                    message = message ?? m[3]
+                }
+            }
+            return {
+                url: url || "-",
+                method: String(method || "POST").toUpperCase(),
+                code: code ?? "-",
+                errCode: errCode ?? code ?? "-",
+                message: message || err || "-",
+                traceId: traceId || "",
+            }
+        }
+
+        const shortTrace = t => t ? `${t.slice(0, 10)}…${t.slice(-6)}` : "-"
 
         // seg 的可访问媒体地址：已落盘 → 文件接口；http(s) → 原地址；否则 null
         function mediaSrc(seg) {
@@ -349,13 +386,20 @@
                 $("content").innerHTML = `<div class="section"><div class="empty">暂无报错记录</div></div>`
                 return
             }
-            const rows = list.map(r => `<tr>
-                <td><div class="err-text" title="${esc(r.err)}">${esc(r.err || "-")}</div></td>
+            const rows = list.map(r => {
+                const info = errInfo(r)
+                return `<tr>
+                <td><div class="api"><span class="api-method">${esc(info.method)}</span> <span class="api-url" title="${esc(info.url)}">${esc(info.url)}</span></div></td>
+                <td><span class="code-badge">${esc(info.code)}</span></td>
+                <td><span class="code-badge">${esc(info.errCode)}</span></td>
+                <td><div class="msg-err" title="${esc(info.message)}">${esc(info.message)}</div></td>
+                <td><span class="trace" data-trace="${esc(info.traceId)}" title="${info.traceId ? "点击复制 trace_id" : "-"}">${esc(shortTrace(info.traceId))}</span></td>
                 <td>${botCell(r, botInfo)}</td>
                 <td class="time-cell">${esc(fmtTime(r.timestamp))}</td>
                 <td class="msg-cell"><div class="msg-body">${renderSegs(r.segs)}</div></td>
                 <td><span class="attempt-badge">第${esc(r.attempt ?? "-")}轮</span></td>
-            </tr>`).join("")
+            </tr>`
+            }).join("")
 
             $("content").innerHTML = `
                 <div class="section">
@@ -363,7 +407,7 @@
                     <div class="tbl-wrap">
                         <table class="tbl">
                             <thead><tr>
-                                <th>报错信息</th><th>Bot</th><th>时间</th><th>消息内容</th><th>轮数</th>
+                                <th>报错接口</th><th>code</th><th>err_code</th><th>报错信息</th><th>trace_id</th><th>Bot</th><th>时间</th><th>消息内容</th><th>轮数</th>
                             </tr></thead>
                             <tbody>${rows}</tbody>
                         </table>
@@ -439,6 +483,14 @@
                 img.onclick = () => {
                     $("imgMaskImg").src = img.src
                     $("imgMask").classList.add("show")
+                }
+            })
+            // 点击 trace_id 复制完整值
+            $("content").querySelectorAll(".trace").forEach(el => {
+                el.onclick = () => {
+                    if (!el.dataset.trace) return
+                    navigator.clipboard?.writeText(el.dataset.trace)
+                        .then(() => toast("已复制 trace_id"), () => toast("复制失败"))
                 }
             })
         }

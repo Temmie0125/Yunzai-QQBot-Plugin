@@ -29,6 +29,7 @@ const BOOLEAN_FIELDS = [
   { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）", inBot: true },
   { key: "internal", label: "分片使用内网上传", desc: "开启后分片上传使用内网上传，可大幅提升文件发送速度，非腾讯云服务器不用开启此选项（需重启后生效）", inBot: true },
   { key: "stat", label: "使用统计", desc: "按机器人记录每日使用人数/群数、留存与增减，并在 Web 控制台展示（需重启后生效）" },
+  { key: "recordSendErrors", label: "记录发送报错", desc: "发送失败时记录报错详情（接口/错误码/trace_id 等）与消息附件（自动落盘至 data/errFile，避免 URL 过期），供 Web 控制台「报错统计」页查看，保留 30 天" },
 ]
 
 // 全局数字字段
