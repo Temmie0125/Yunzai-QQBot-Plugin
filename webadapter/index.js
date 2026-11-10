@@ -41,9 +41,11 @@ const NUMBER_FIELDS = [
   { key: "concurrency", label: "并发数", desc: "分片上传并发数量，如未使用内网上传请将此选项调整到1，如果使用内网且成功配置最大可调制20（需重启后生效）", default: 1, inBot: true, integer: true, min: 1, max: 20 },
 ]
 
-// config.bot 子对象中的下拉选择字段（基础设置中显示为下拉框，值为字符串）
-const BOT_SELECT_FIELDS = [
-  { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou" },
+// 下拉选择字段（基础设置中显示为下拉框，值为字符串）
+// inBot: true 表示该字段位于 config.bot 子对象中（如 region）
+const SELECT_FIELDS = [
+  { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou", inBot: true },
+  { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式：逐条拆发（默认）/ 合并为一条消息，条目间用分割线隔开 / 渲染为图片。渲染图片失败会自动回退合并发送，再失败回退逐条拆发，保存后实时生效", default: "split", options: ["split", "merge", "image"] },
 ]
 
 // 多值映射字段（按 botQQ 索引），值在页面显示为列表
@@ -126,8 +128,10 @@ export function init(ctx) {
             : (config[f.key] != null ? config[f.key] : f.default)
         }
         const texts = {}
-        for (const f of BOT_SELECT_FIELDS) {
-          texts[f.key] = config.bot?.[f.key] != null ? config.bot[f.key] : f.default
+        for (const f of SELECT_FIELDS) {
+          texts[f.key] = f.inBot
+            ? (config.bot?.[f.key] != null ? config.bot[f.key] : f.default)
+            : (config[f.key] != null ? config[f.key] : f.default)
         }
         const md = config.markdown || {}
         const maps = {}
@@ -215,11 +219,18 @@ export function init(ctx) {
           config.markdown.batchSize = body.markdownBatchSize
         }
 
-        // bot 子对象文本字段
+        // 下拉选择字段（含 bot 子对象与顶层）
         if (body.texts) {
-          config.bot = config.bot || {}
-          for (const f of BOT_SELECT_FIELDS) {
-            if (body.texts[f.key] != null) config.bot[f.key] = String(body.texts[f.key])
+          for (const f of SELECT_FIELDS) {
+            if (body.texts[f.key] == null) continue
+            // 白名单校验，非法值忽略
+            if (f.options && !f.options.includes(String(body.texts[f.key]))) continue
+            if (f.inBot) {
+              config.bot = config.bot || {}
+              config.bot[f.key] = String(body.texts[f.key])
+            } else {
+              config[f.key] = String(body.texts[f.key])
+            }
           }
         }
 

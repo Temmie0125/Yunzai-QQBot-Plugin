@@ -371,11 +371,17 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 <details><summary>报错统计</summary>
 
-- 借助webadapter可以查看最近报错统计以及报错类型统计，前提需到Yunzai/config/QQBot.yaml中将recordSendErrors设置为true(可在webadapter中设置)，默认为false不记录。
+- 借助webadapter可以查看最近报错统计以及报错类型统计，前提需到Yunzai/config/QQBot.yaml中将`recordSendErrors`设置为`true`(可在webadapter中设置)，默认为false不记录。
 
 - 最近报错可展示最近报错的详细信息、内容、时间等，报错类型统计可展示报错类型触发次数排序
 
 - 此统计仅统计sendMsg过程中从开放平台api返回的报错，其他如插件报错、消息解析报错等不统计
+
+</details>
+
+<details><summary>合并转发发送方式控制</summary>
+
+- 合并转发消息可以选择三种发送方式`split=逐条拆发（默认）`、`merge=合并为一条消息，条目间用分割线隔开`、`image=渲染为一张图片发送`,可到Yunzai/config/QQBot.yaml中将`recordSendErrors`转为对应的值即可(可在webadapter中快捷设置)
 
 </details>
 

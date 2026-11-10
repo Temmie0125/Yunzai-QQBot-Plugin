@@ -133,8 +133,7 @@ export const sendMethods = {
                 case "button":
                     continue
                 case "node":
-                    for (const { message } of i.data)
-                        messages.push(...(await this.makeGuildMsg(data, message)))
+                    messages.push(...(await this.makeForwardMsg(data, i.data, "makeGuildMsg")))
                     continue
                 case "raw":
                     if (Array.isArray(i.data)) {

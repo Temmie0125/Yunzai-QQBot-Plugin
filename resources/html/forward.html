@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #e3e6ec;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+        }
+
+        .container { width: 460px; padding: 18px 16px; }
+
+        .msg {
+            display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-start;
+        }
+        .msg:last-child { margin-bottom: 0; }
+
+        .avatar {
+            width: 34px; height: 34px; border-radius: 6px;
+            flex: 0 0 auto; margin-top: 3px;
+            background: #d5d9e0;
+        }
+
+        .body { min-width: 0; max-width: calc(100% - 44px); }
+
+        .nickname {
+            font-size: 12px; color: #8a8f99; margin: 0 0 5px 4px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .bubble {
+            display: inline-block; max-width: 100%;
+            background: #fff; border-radius: 10px; padding: 10px 13px;
+            font-size: 14px; color: #1f2329; line-height: 1.65;
+            word-break: break-all; white-space: pre-wrap;
+        }
+
+        .bubble:empty { display: none; }
+
+        .bubble .img {
+            display: block; max-width: 300px; max-height: 300px;
+            margin-top: 6px; border-radius: 8px;
+        }
+        .bubble .img:first-child { margin-top: 0; }
+
+        .bubble .at { color: #4f6ef7; font-weight: 600; }
+    </style>
+</head>
+
+<body>
+    <div class="container">{{@ html}}</div>
+</body>
+
+</html>

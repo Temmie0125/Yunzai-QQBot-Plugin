@@ -378,6 +378,15 @@
             { key: "chunkSize", label: "流式分块大小", desc: "流式消息每块显示的字数", default: 2 },
             { key: "delay", label: "流式延迟", desc: "流式消息每块显示的间隔(毫秒)", default: 100 },
         ]
+        // 基础设置下拉选择字段
+        const FORWARD_METHOD_OPTIONS = [
+            { value: "split", label: "逐条拆发" },
+            { value: "merge", label: "合并一条消息（分割线隔开）" },
+            { value: "image", label: "渲染为图片" },
+        ]
+        const SELECT_META = [
+            { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式。逐条拆发为原有行为；渲染为图片失败会自动回退合并发送，再失败回退逐条拆发（保存后实时生效）", options: FORWARD_METHOD_OPTIONS },
+        ]
 
         function avatarUrl(qq) { return `http://q1.qlogo.cn/g?b=qq&nk=${qq}&s=640` }
 
@@ -432,6 +441,7 @@
             html += `<div class="section"><h2>基础设置</h2>`
             for (const f of BOOLEAN_META) html += boolRowHtml(f)
             for (const f of NUMBER_META) html += numRowHtml(f)
+            for (const f of SELECT_META) html += selectRowHtml(f)
             html += `</div>`
 
             // 内网加速设置
