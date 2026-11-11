@@ -770,7 +770,6 @@ export const buildMethods = {
     },
 
     async forwardToMerge(data, msgList, builder) {
-        logger.info(JSON.stringify(msgList,null,2))
         const separator = { type: "text", text: "\n***\n" }
         const result = []
         for (const item of msgList) {
