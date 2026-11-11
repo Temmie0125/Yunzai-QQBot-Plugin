@@ -770,6 +770,7 @@ export const buildMethods = {
     },
 
     async forwardToMerge(data, msgList, builder) {
+        logger.info(JSON.stringify(msgList,null,2))
         const separator = { type: "text", text: "\n***\n" }
         const result = []
         for (const item of msgList) {
@@ -785,66 +786,81 @@ export const buildMethods = {
 
     async forwardToImage(data, msgList, builder) {
         const rows = [], buttons = [], files = []
-        for (const item of msgList) {
-            const message = item?.message
-            if (!message) continue
-            const nickname = item.nickname || item.user_id || data.bot.nickname || ""
-            let avatar = item.avatar
-                || (typeof item.user_id === "number" ? `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=640` : "")
-                || data.pickFriend?.(item.user_id)?.avatar
-                || data.bot?.avatar
-                || ""
-            avatar = escHtml(String(await segImgSrc(avatar)))
-            const parts = []
-            let fileId = 0
-            for (const seg of Array.isArray(message) ? message : [message]) {
-                if (!seg) continue
-                switch (seg.type) {
-                    case "text":
-                        parts.push(escHtml(seg.text))
-                        break
-                    case "at":
-                        let atUser = data.bot.fl.get(seg.qq || seg.user_id)
-                        parts.push(`<span class="at">@${escHtml(String(atUser.nickname || seg.qq || seg.user_id || ""))}</span>`)
-                        break
-                    case "face":
-                        parts.push("[表情]")
-                        break
-                    case "image": {
-                        const src = await segImgSrc(seg.file)
-                        parts.push(src ? `<img class="img" src="${src}">` : "[图片]")
-                        break
-                    }
-                    case "record":
-                    case "audio":
-                        files.push(seg)
-                        fileId++
-                        parts.push(`[语音附件${fileId}]见后续消息`)
-                        break
-                    case "video":
-                        files.push(seg)
-                        fileId++
-                        parts.push(`[视频附件${fileId}]见后续消息`)
-                        break
-                    case "file":
-                        files.push(seg)
-                        fileId++
-                        parts.push(`[文件附件${fileId}]见后续消息`)
-                        break
-                    case "markdown":
-                        parts.push(escHtml(Bot.String(seg.content)))
-                        break
-                    case "button":
-                        buttons.push(seg)
-                        break
-                    default:
-                        parts.push(escHtml(Bot.String(seg.text ?? seg)))
-                }
+        const MAX_NODE_DEPTH = 5
+
+        const buildRows = async (list, depth = 0) => {
+            if (depth > MAX_NODE_DEPTH) {
+                logger.warn(`[QQBot] 合并转发嵌套超过 ${MAX_NODE_DEPTH} 层，已截断`)
+                return
             }
-            const content = parts.filter(Boolean).join("")
-            if (content.trim())
-                rows.push({ nickname: escHtml(String(nickname)), avatar, content })
+            for (const item of list || []) {
+                const message = item?.message
+                if (!message) continue
+                const nickname = item.nickname || item.user_id || data.bot?.nickname || ""
+                let avatar = item.avatar
+                    || (typeof item.user_id === "number" ? `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=640` : "")
+                    || data.pickFriend?.(item.user_id)?.avatar
+                    || data.bot?.avatar
+                    || ""
+                avatar = escHtml(String(await segImgSrc(avatar)))
+                const parts = []
+                const flushRow = () => {
+                    const content = parts.filter(Boolean).join("")
+                    parts.length = 0
+                    if (content.trim())
+                        rows.push({ nickname: escHtml(String(nickname)), avatar, content })
+                }
+                for (const seg of Array.isArray(message) ? message : [message]) {
+                    if (!seg) continue
+                    switch (seg.type) {
+                        case "text":
+                            parts.push(escHtml(seg.text))
+                            break
+                        case "at":
+                            let atUser = data.bot.fl.get(seg.qq || seg.user_id)
+                            parts.push(`<span class="at">@${escHtml(String(atUser?.nickname || seg.qq || seg.user_id || ""))}</span>`)
+                            break
+                        case "face":
+                            parts.push("[表情]")
+                            break
+                        case "image": {
+                            const src = await segImgSrc(seg.file)
+                            parts.push(src ? `<img class="img" src="${src}">` : "[图片]")
+                            break
+                        }
+                        case "record":
+                        case "audio":
+                            files.push(seg)
+                            parts.push(`[语音附件${files.length}]见后续消息`)
+                            break
+                        case "video":
+                            files.push(seg)
+                            parts.push(`[视频附件${files.length}]见后续消息`)
+                            break
+                        case "file":
+                            files.push(seg)
+                            parts.push(`[文件附件${files.length}]见后续消息`)
+                            break
+                        case "markdown":
+                            parts.push(escHtml(Bot.String(seg.content)))
+                            break
+                        case "button":
+                            buttons.push(seg)
+                            break
+                        case "node": {
+                            flushRow()
+                            await buildRows(seg.data, depth + 1)
+                            break
+                        }
+                        default:
+                            parts.push(escHtml(Bot.String(seg.text ?? seg)))
+                    }
+                }
+                flushRow()
+            }
         }
+
+        await buildRows(msgList)
         if (!rows.length) return null
 
         const html = rows.map(r => `
