@@ -19,6 +19,7 @@ import { QQBotGroupBind } from "./apps/groupBind.js"
 import { QQBotQrLogin } from "./apps/qrlogin.js"
 import { QQBotAppSet } from "./apps/appset.js"
 import { QQBotStat } from "./apps/stat.js"
+import { QQBotErrStat } from "./apps/stat.js"
 
 Object.assign(global.segment, {
   buble(...data) {
@@ -162,6 +163,7 @@ export const apps = {
     QQBotQrLogin,
     QQBotAppSet,
     QQBotStat,
+    QQBotErrStat,
 }
 
 logger.info(logger.yellow("- QQBot 适配器插件加载完成"))

@@ -49,6 +49,7 @@ git clone https://gitcode.com/wind-trace/Yunzai-QQBot-Plugin.git ./plugins/QQBot
 - `#开启纯at其他bot过滤`/`#关闭纯at其他bot过滤` 可以开关只艾特了其他官机的消息的过滤，以免在使用其他机器人时触发
 - `#QQBot切换api` 可以切换使用的QQBot api，根据提示可自由切换新旧api
 - `#QQBot统计`/`#QQBot月统计` 可以查看当前QQBot的统计面板图
+- `#最近报错`、`#报错排行` 可以查看最近报错和报错类型排行
 
 ## 与原版区别
 
@@ -376,6 +377,8 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 - 最近报错可展示最近报错的详细信息、内容、时间等，报错类型统计可展示报错类型触发次数排序
 
 - 此统计仅统计sendMsg过程中从开放平台api返回的报错，其他如插件报错、消息解析报错等不统计
+
+- 发送`#最近报错`和`#报错排行`可分别查看最近报错和报错类型排行
 
 </details>
 
