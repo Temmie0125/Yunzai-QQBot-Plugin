@@ -773,10 +773,12 @@ export const buildMethods = {
         const separator = { type: "text", text: "\n***\n" }
         const result = []
         for (const item of msgList) {
-            result.push(item?.message)
-            result.push(separator)
+            const msg = item?.message
+            const parts = Array.isArray(msg) ? msg.flat(Infinity) : (msg == null ? [] : [msg])
+            if (!parts.length) continue
+            result.push(...parts, separator)
         }
-        result.pop()
+        if (result.length) result.pop()
         const message = await this[builder](data, result)
         return message.length ? message : null
     },
