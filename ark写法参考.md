@@ -49,18 +49,18 @@ metaUrl   === meta_url   === METAURL
 
 ### 字段
 
-| 变量 | 参数名 | 类型 | 必填 | 说明 |
-|---|---|---|---|---|
-| `#DESC#` | `desc` | string | 是 | 描述 |
-| `#PROMPT#` | `prompt` | string | 是 | 提示消息 |
-| `#LIST#` | `list` | array | 是 | 文本列表，至少 1 项 |
+| 变量 | 参数名 | 类型 | 说明 |
+|---|---|---|---|
+| `#DESC#` | `desc` | string | 描述 |
+| `#PROMPT#` | `prompt` | string | 提示消息 |
+| `#LIST#` | `list` | array | 文本列表，至少 1 项 |
 
 `list` 元素字段：
 
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| `desc` | string | 是 | 文本内容 |
-| `link` | string | 否 | 跳转链接，**需提前报备**；不填则仅显示文本 |
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `desc` | string | 文本内容 |
+| `link` | string | 跳转链接，**需提前报备**；不填则仅显示文本 |
 
 ### `list` 的四种写法
 
@@ -136,15 +136,15 @@ Error: [ark 23] list[1] 格式无效        // 元素既非字符串/数组/对�
 
 ### 字段
 
-| 变量 | 参数名 | 类型 | 必填 | 说明 |
-|---|---|---|---|---|
-| `#DESC#` | `desc` | string | 是 | 描述 |
-| `#PROMPT#` | `prompt` | string | 是 | 提示文本 |
-| `#TITLE#` | `title` | string | 是 | 标题 |
-| `#METADESC#` | `metadesc` | string | 是 | 详情描述 |
-| `#IMG#` | `img` | string | 是 | 图片链接 |
-| `#LINK#` | `link` | string | 是 | 跳转链接 |
-| `#SUBTITLE#` | `subtitle` | string | 是 | 来源 |
+| 变量 | 参数名 | 类型 | 说明 |
+|---|---|---|---|
+| `#DESC#` | `desc` | string | 描述 |
+| `#PROMPT#` | `prompt` | string | 提示文本 |
+| `#TITLE#` | `title` | string | 标题 |
+| `#METADESC#` | `metadesc` | string | 详情描述 |
+| `#IMG#` | `img` | string | 图片链接 |
+| `#LINK#` | `link` | string | 跳转链接 |
+| `#SUBTITLE#` | `subtitle` | string | 来源 |
 
 ### 调用示例
 
@@ -173,13 +173,13 @@ Error: [ark 24] subtitle 必填
 
 ### 字段
 
-| 变量 | 参数名 | 类型 | 必填 | 说明 |
-|---|---|---|---|---|
-| `#PROMPT#` | `prompt` | string | 是 | 提示消息 |
-| `#METATITLE#` | `metatitle` | string | 是 | 标题 |
-| `#METASUBTITLE#` | `metasubtitle` | string | 是 | 子标题 |
-| `#METACOVER#` | `metacover` | string | 是 | 大图，**尺寸 975×540** |
-| `#METAURL#` | `metaurl` | string | 是 | 跳转链接 |
+| 变量 | 参数名 | 类型 | 说明 |
+|---|---|---|---|
+| `#PROMPT#` | `prompt` | string | 提示消息 |
+| `#METATITLE#` | `metatitle` | string | 标题 |
+| `#METASUBTITLE#` | `metasubtitle` | string | 子标题 |
+| `#METACOVER#` | `metacover` | string | 大图，**尺寸 975×540** |
+| `#METAURL#` | `metaurl` | string | 跳转链接 |
 
 ### 调用示例
 

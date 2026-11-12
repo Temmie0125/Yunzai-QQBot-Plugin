@@ -4,6 +4,7 @@
 //   #QQBot月统计   本月汇总（可指定月份：#QQBot月统计 2026-08）
 import { config } from "../adapter/context.js"
 import { getSummary, dateStr, isStatBot } from "../lib/stat.js"
+import { getSendErrors, getSendErrorTypes } from "../lib/errorStore.js"
 import puppeteer from "../../../lib/puppeteer/puppeteer.js"
 
 const _path = process.cwd().replace(/\\/g, "/")
@@ -242,5 +243,135 @@ export class QQBotStat extends plugin {
         }
         if (!img) return this.reply("图片生成失败")
         return this.reply(img)
+    }
+}
+
+function errInfo(r = {}) {
+    let { url, method, code, err_code: errCode, message, trace_id: traceId, err } = r
+    if (!url || message == null) {
+        const m = String(err || "").match(/^request\s+"([^"]+)"\s+error with code\((\d+)\):\s*([\s\S]+)$/)
+        if (m) {
+            url = url || m[1]
+            code = code ?? m[2]
+            message = message ?? m[3]
+        }
+    }
+    return {
+        url: url || "-",
+        method: String(method || "POST").toUpperCase(),
+        code: code ?? "-",
+        errCode: errCode ?? code ?? "-",
+        message: message || err || "-",
+        traceId: traceId || "-",
+    }
+}
+
+function fmtTs(ts) {
+    const d = new Date(Number(ts) || Date.now())
+    const p = n => String(n).padStart(2, "0")
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
+function botAvatarOf(id) {
+    const info = Bot[id]?.info || {}
+    return String(info.avatar || "").replace(/^http:\/\//, "https://")
+        || `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}`
+}
+
+const CMD_LOCK = new Map()
+function acquireLock(key, cdMs = 5000) {
+    const now = Date.now()
+    if ((CMD_LOCK.get(key) || 0) > now) return false
+    CMD_LOCK.set(key, now + cdMs)
+    return true
+}
+
+export class QQBotErrStat extends plugin {
+    constructor() {
+        super({
+            name: "QQBot报错统计",
+            dsc: "查看发送报错记录（#最近报错[数量] / #报错排行[数量]）",
+            event: "message",
+            rule: [
+                {
+                    reg: "^#最近报错\\s*(\\d{1,3})?$",
+                    fnc: "recentErrs",
+                    permission: "master",
+                },
+                {
+                    reg: "^#报错排行\\s*(\\d{1,3})?$",
+                    fnc: "errRank",
+                    permission: "master",
+                },
+            ],
+        })
+    }
+
+    argCount(def) {
+        const n = Number(String(this.e.msg || "").match(/\d+/)?.[0])
+        return Math.min(50, Math.max(1, n || def))
+    }
+
+    async recentErrs() {
+        if (this.e.adapter_id !== "QQBot") return
+        if (!config.recordSendErrors) {
+            return this.reply("发送报错记录未开启，可在「QQBot 设置 - 基础设置」中开启「记录发送报错」")
+        }
+        if (!acquireLock("recentErrs")) return
+        const n = this.argCount(20)
+        let data
+        try {
+            data = await getSendErrors({ page: 1, limit: n })
+        } catch (err) {
+            logger.error(`[QQBot] 最近报错查询失败: ${err?.stack || err}`)
+            return this.reply("报错记录查询失败，请查看日志")
+        }
+        const { list = [] } = data
+        if (!list.length) {
+            return this.reply("暂无报错记录")
+        }
+
+        const lines = ["| Bot | 报错信息 | 接口 | code | err_code | trace_id | 时间（第x轮） |","| --- | --- | --- | --- | --- | --- | ---"]
+        for (const r of list) {
+            const info = errInfo(r)
+            const avatar = botAvatarOf(r.self_id || this.e.self_id)
+            const nickname = r.nickname || Bot[r.self_id]?.nickname || "未知"
+            lines.push(
+                `| ![img #30px #30px](${avatar})${nickname} ` +
+                `| ${info.message} ` +
+                `| ${info.method} ${info.url} ` +
+                `| ${info.code} ` +
+                `| ${info.errCode} ` +
+                `| ${info.traceId} ` +
+                `| ${fmtTs(r.timestamp)}（第${r.attempt ?? "-"}轮）|`
+            )
+        }
+
+        const md = `**最近报错（${list.length} 条）**\n${lines.join("\n")}`
+        return this.reply(md)
+    }
+
+    async errRank() {
+        if (this.e.adapter_id !== "QQBot") return
+        if (!config.recordSendErrors) {
+            return this.reply("发送报错记录未开启，可在「QQBot 设置 - 基础设置」中开启「记录发送报错」")
+        }
+        if (!acquireLock("errRank")) return
+        const n = this.argCount(10)
+        let rank
+        try {
+            rank = await getSendErrorTypes(n)
+        } catch (err) {
+            logger.error(`[QQBot] 报错排行查询失败: ${err?.stack || err}`)
+            return this.reply("报错排行查询失败，请查看日志")
+        }
+        if (!rank.length) {
+            return this.reply("暂无报错记录")
+        }
+
+        const md = `**报错排行（近 30 天 Top ${rank.length}）**\n| 报错类型 | 次数 |\n| --- | --- |\n${rank
+            .map(r => `| ${r.type} | ${r.count}次 |`)
+            .join("\n")}`
+        return this.reply(md)
     }
 }

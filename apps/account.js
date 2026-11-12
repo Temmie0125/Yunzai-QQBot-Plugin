@@ -1,7 +1,6 @@
 // QQBot 账号 / 模板 / 绑定 / 切换 API 设置命令
 import { config, configSave } from "../adapter/context.js"
 import { adapter } from "../adapter/adapter.js"
-import { cleanupMediaFiles } from "../lib/media.js"
 
 export class QQBotAccount extends plugin {
     constructor() {
@@ -9,7 +8,6 @@ export class QQBotAccount extends plugin {
             name: "QQBot账号管理",
             dsc: "QQBot 账号 / 模板 / 绑定 / 切换 API 设置",
             event: "message",
-            task: { name: "QQBot媒体文件清理", cron: "0 3 * * *", fnc: () => cleanupMediaFiles() },
             rule: [
                 {
                     reg: "^#[Qq]+[Bb]ot账号$",

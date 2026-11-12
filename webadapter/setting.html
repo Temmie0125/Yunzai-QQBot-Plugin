@@ -400,6 +400,7 @@
             { key: "sandbox", label: "沙箱模式", desc: "开启 QQ 机器人沙箱环境（需重启后生效）" },
             { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）" },
             { key: "stat", label: "使用统计", desc: "按机器人记录每日使用人数/群数、留存与增减，并在 Web 控制台展示（需重启后生效）" },
+            { key: "recordSendErrors", label: "记录发送报错", desc: "发送失败时记录报错详情（接口/错误码/trace_id 等）与消息附件（自动落盘至 data/errFile，避免 URL 过期），供 Web 控制台「报错统计」页查看，保留 30 天" },
         ]
         // 依赖沙箱状态显示提示的字段（使用沙箱时此选项不起作用）
         const SANDBOX_DEPENDENT = new Set(["newapi"])
@@ -439,6 +440,15 @@
             { key: "imageLength", label: "图片压缩阈值", desc: "超过此大小(MB)的图片将自动压缩", default: 3 },
             { key: "chunkSize", label: "流式分块大小", desc: "流式消息每块显示的字数", default: 2 },
             { key: "delay", label: "流式延迟", desc: "流式消息每块显示的间隔(毫秒)", default: 100 },
+        ]
+        // 基础设置下拉选择字段
+        const FORWARD_METHOD_OPTIONS = [
+            { value: "split", label: "逐条拆发" },
+            { value: "merge", label: "合并一条消息（分割线隔开）" },
+            { value: "image", label: "渲染为图片" },
+        ]
+        const SELECT_META = [
+            { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式。逐条拆发为原有行为；渲染为图片失败会自动回退合并发送，再失败回退逐条拆发（保存后实时生效）", options: FORWARD_METHOD_OPTIONS },
         ]
 
         function avatarUrl(qq) { return `http://q1.qlogo.cn/g?b=qq&nk=${qq}&s=640` }
@@ -494,6 +504,7 @@
             html += `<div class="section"><h2>基础设置</h2>`
             for (const f of BOOLEAN_META) html += boolRowHtml(f)
             for (const f of NUMBER_META) html += numRowHtml(f)
+            for (const f of SELECT_META) html += selectRowHtml(f)
             html += `</div>`
 
             // 内网加速设置

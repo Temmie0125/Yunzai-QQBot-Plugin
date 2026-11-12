@@ -12,7 +12,7 @@ TRSS-Yunzai QQBot 适配器插件（个人修改 Fork）
 
 在上游「与原版区别」的基础上，本 Fork 另含以下自用修改（详见 [commit 历史](https://github.com/Temmie0125/Yunzai-QQBot-Plugin/commits/fork/)）：
 
-- ⚠ SDK 依赖 `@windtrace/qq-group-bot` 已替换为 Fork 版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（tag `v1.0.41-patched`），修复文件分片上传等问题
+- ⚠ SDK 依赖 `@windtrace/qq-group-bot` 已替换为 Fork 版 [Temmie0125/qq-group-bot](https://github.com/Temmie0125/qq-group-bot)（tag `v1.0.45-patched`），修复文件分片上传等问题
 - 消息发送模式新增 `auto` 智能判定：纯文本直发不再走 markdown 渲染，纯图片消息直发媒体消息
 - 群消息/按钮回调事件注入用户昵称，退群事件昵称兜底
 - 引用消息解析增强：本地消息查回、按内容兜底匹配、支持引用撤回
@@ -53,6 +53,8 @@ git clone -b fork https://github.com/Temmie0125/Yunzai-QQBot-Plugin.git ./plugin
 - `#开启纯at其他bot过滤`/`#关闭纯at其他bot过滤` 可以开关只艾特了其他官机的消息的过滤，以免在使用其他机器人时触发
 - `#QQBot切换api` 可以切换使用的QQBot api，根据提示可自由切换新旧api
 - `#QQBot统计`/`#QQBot月统计` 可以查看当前QQBot的统计面板图
+- `#最近报错`、`#报错排行` 可以查看最近报错和报错类型排行（需在 webadapter 中开启 `recordSendErrors`）
+- 合并转发消息支持三种发送方式 `split=逐条拆发（默认）`/`merge=合并为一条`/`image=渲染为图片发送`（可在 webadapter 中快捷设置）
 
 ## 与原版区别
 

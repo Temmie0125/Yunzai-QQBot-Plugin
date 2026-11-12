@@ -1,8 +1,29 @@
 // 连接 / WebHook / 加载方法
+import crypto from "node:crypto"
+import express from "express"
 import QRCode from "qrcode"
 import { config, configSave } from "./context.js"
 import { Bot as QQBot } from "@windtrace/qq-group-bot"
 import { QR_URL_TPL, _qrCreateBindTask, _qrPollBindResult, _qrDecryptSecret, _qrGetRobotUin } from "./qr.js"
+
+
+const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex")
+const ed25519KeyCache = new Map()
+
+function getEd25519Keys(secret) {
+    let keys = ed25519KeyCache.get(secret)
+    if (!keys) {
+        while (secret.length < 32)
+            secret = secret.repeat(2).slice(0, 32)
+        const signKey = crypto.createPrivateKey({
+            key: Buffer.concat([ED25519_PKCS8_PREFIX, Buffer.from(secret.slice(0, 32))]),
+            format: "der", type: "pkcs8",
+        })
+        keys = { signKey, verifyKey: crypto.createPublicKey(signKey) }
+        ed25519KeyCache.set(secret, keys)
+    }
+    return keys
+}
 
 export const connectMethods = {
     getFriendMap(id) {
@@ -212,27 +233,72 @@ export const connectMethods = {
         }
     },
 
-    async makeWebHookSign(id, req, secret) {
-        const { sign } = (await import("tweetnacl")).default
+    makeWebHookSign(id, req, secret) {
         const { plain_token, event_ts } = req.body.d
-        while (secret.length < 32)
-            secret = secret.repeat(2).slice(0, 32)
-        const signature = Buffer.from(sign.detached(
+        const signature = crypto.sign(
+            null,
             Buffer.from(`${event_ts}${plain_token}`),
-            sign.keyPair.fromSeed(Buffer.from(secret)).secretKey,
-        )).toString("hex")
+            getEd25519Keys(secret).signKey,
+        ).toString("hex")
         Bot.makeLog("debug", ["QQBot 签名生成", { plain_token, signature }], id)
         req.res.send({ plain_token, signature })
     },
 
+    // QQ 对 body 原始字节签名，优先使用路由级解析器保留的 req.rawBody
+    verifySignature(signature, timestamp, req, secret) {
+        if (!signature || !timestamp)
+            return false
+        const sig = Buffer.from(signature, "hex")
+
+        if (sig.length !== 64 || (sig[63] & 224) !== 0)
+            return false
+        try {
+            const message = req.rawBody
+                ? Buffer.concat([Buffer.from(timestamp), req.rawBody])
+                : Buffer.from(`${timestamp}${JSON.stringify(req.body)}`)
+            return crypto.verify(null, message, getEd25519Keys(secret).verifyKey, sig)
+        } catch (err) {
+            Bot.makeLog("warn", ["QQBot 签名验证异常", err], "QQBot-Plugin")
+            return false
+        }
+    },
+
     makeWebHook(req) {
+        if (req.method !== "POST"){
+            logger.warn("请求方式非法")
+            return req.res.sendStatus(405)
+        }
+
         const appid = req.headers["x-bot-appid"]
         if (!(appid in this.appid))
             return Bot.makeLog("warn", "找不到对应 QQBot", appid)
+        
+        const bot = this.appid[appid]
+        
+        const body = req.body
+        if (!body || typeof body !== "object" || Array.isArray(body) || !("op" in body)) {
+            Bot.makeLog("warn", "webhook 请求体格式异常", appid)
+            return req.res.sendStatus(400)
+        }
+
         if (req.body?.d && "plain_token" in req.body.d)
-            return this.makeWebHookSign(this.appid[appid].uin, req, this.appid[appid].info.secret)
+            return this.makeWebHookSign(bot.uin, req, bot.info.secret)
+        
+        const signature = req.headers["x-signature-ed25519"]
+        const timestamp = req.headers["x-signature-timestamp"]
+
+        const ts = Number(timestamp)
+        if (!Number.isSafeInteger(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
+            Bot.makeLog("warn", ["签名时间戳过期或非法", timestamp], appid)
+            return req.res.sendStatus(401)
+        }
+
+        if (!this.verifySignature(signature, timestamp, req, bot.info.secret)) {
+            Bot.makeLog("warn", "签名验证失败", appid)
+            return req.res.sendStatus(401)
+        }
         if (req.body?.t && "t" in req.body)
-            this.appid[appid].sdk.dispatchEvent(req.body.t, req.body)
+            bot.sdk.dispatchEvent(req.body.t, req.body)
         req.res.sendStatus(200)
     },
 
@@ -255,7 +321,11 @@ export const connectMethods = {
     },
 
     async load() {
-        Bot.express.use(`/${this.name}`, this.makeWebHook.bind(this))
+        Bot.express.use(
+            `/${this.name}`,
+            express.json({ verify: (req, res, buf) => { req.rawBody = buf }, }),
+            this.makeWebHook.bind(this)
+        )
         Bot.express.quiet.push(`/${this.name}`)
         for (const bot of config.token)
             await Bot.sleep(5000, this.connect(bot))

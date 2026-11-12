@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报错统计</title>
+    <style>
+        :root {
+            --accent: #4f6ef7;
+            --accent-hover: #3a5af0;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --border: #e0e3e8;
+            --text: #1f2329;
+            --text-secondary: #8a8f99;
+            --danger: #f5483b;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+        .topbar {
+            flex: 0 0 auto; min-height: 56px; display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 18px; background: var(--card); border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 20; gap: 10px; flex-wrap: wrap;
+        }
+        .topbar h1 { font-size: 16px; margin: 0; font-weight: 600; flex: 0 0 auto; }
+        .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        button.act {
+            height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+            background: #fff; color: var(--text); font-size: 13px; cursor: pointer;
+        }
+        button.act { background: var(--accent); color: #fff; border-color: var(--accent); }
+        button.act:hover { background: var(--accent-hover); }
+        button.act:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* 自定义下拉（替代原生 select，弹窗样式可完全自定义） */
+        .sel { position: relative; }
+        .sel-btn {
+            height: 32px; min-width: 132px; display: flex; align-items: center; justify-content: space-between;
+            gap: 6px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+            background: #fff; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .sel-btn:hover { border-color: var(--accent); }
+        .sel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sel-arrow { color: var(--text-secondary); font-size: 9px; flex: 0 0 auto; transition: transform .18s; }
+        .sel.open .sel-btn { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 110, 247, .12); }
+        .sel.open .sel-arrow { transform: rotate(180deg); }
+        .sel-list {
+            display: none; position: absolute; top: calc(100% + 5px); right: 0; min-width: 100%;
+            padding: 4px; background: #fff; border: 1px solid var(--border); border-radius: 9px;
+            box-shadow: 0 8px 22px rgba(16, 24, 40, .14); z-index: 30;
+            scrollbar-width: thin;
+            scrollbar-color: #cfd4dd transparent;
+        }
+        .sel.open .sel-list { display: block; }
+        .sel-item { padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .sel-item:hover { background: #f2f3f5; }
+        .sel-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+        /* 类型统计显示条数控制 */
+        .topn {
+            display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+            font-size: 12px; color: var(--text-secondary); font-weight: 400;
+        }
+        .topn input {
+            width: 58px; height: 26px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 12.5px; color: var(--text);
+        }
+        .topn input:focus { outline: none; border-color: var(--accent); }
+        .topn button {
+            height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px;
+            background: #fff; color: var(--text); font-size: 12px; cursor: pointer;
+        }
+        .topn button:hover { border-color: var(--accent); color: var(--accent); }
+
+        .content { padding: 16px 18px 60px; max-width: 1180px; margin: 0 auto; width: 100%; }
+
+        .section {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+        }
+        .section > h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .section > h2 .tag { font-size: 11px; font-weight: 400; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+
+        /* 表格 */
+        .tbl-wrap { overflow-x: auto; }
+        table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tbl th, .tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #f0f1f4; vertical-align: top; }
+        .tbl th {
+            font-size: 12px; color: var(--text-secondary); font-weight: 600;
+            border-bottom: 1px solid var(--border); white-space: nowrap; background: #fafbfc;
+            position: sticky; top: 0;
+        }
+        .tbl tr:last-child td { border-bottom: none; }
+        .tbl tbody tr:hover { background: #f8f9fc; }
+
+        .api { font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 11.5px; max-width: 190px; }
+        .api-method { color: var(--accent); font-weight: 700; }
+        .api-url { word-break: break-all; }
+        .code-badge {
+            display: inline-block; padding: 1px 7px; border-radius: 999px; background: #fdf0ef;
+            color: var(--danger); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+        }
+        .msg-err { white-space: pre-wrap; word-break: break-all; max-width: 200px; color: var(--danger); font-weight: 500; }
+        .trace {
+            font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 11.5px;
+            color: var(--text-secondary); cursor: pointer; border-bottom: 1px dashed var(--border); white-space: nowrap;
+        }
+        .trace:hover { color: var(--accent); }
+
+        .bot-cell { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+        .bot-cell img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); background: #eef0f3; flex: 0 0 auto; }
+        .bot-cell .bot-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bot-cell .bot-qq { font-size: 11px; color: var(--text-secondary); line-height: 1.3; }
+
+        .time-cell { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 12.5px; }
+
+        .attempt-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px;
+            background: #fff4e5; color: #b26a00; font-weight: 600; white-space: nowrap;
+        }
+
+        /* 消息内容渲染 */
+        .msg-cell { max-width: 420px; min-width: 200px; }
+        .msg-body { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .msg-body .txt { white-space: pre-wrap; word-break: break-all; }
+        .msg-body .at { color: var(--accent); font-weight: 600; }
+        .msg-body .tag {
+            font-size: 11.5px; color: var(--text-secondary); border: 1px solid var(--border);
+            border-radius: 6px; padding: 1px 6px; background: #fafbfc; white-space: nowrap;
+        }
+        img.media { max-width: 180px; max-height: 140px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; display: block; cursor: zoom-in; }
+        video.media { max-width: 260px; max-height: 180px; border-radius: 8px; border: 1px solid var(--border); display: block; }
+        audio.media { height: 34px; max-width: 240px; }
+        a.file-link {
+            display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+            color: var(--accent); background: #f0f3ff; border: 1px solid #dce2ff;
+            border-radius: 8px; padding: 4px 9px; font-size: 12.5px; max-width: 240px;
+        }
+        a.file-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        a.file-link:hover { background: #e3e9ff; }
+
+        /* 排行条 */
+        .rank-name { word-break: break-all; max-width: 520px; }
+        .rank-bar-wrap { display: flex; align-items: center; gap: 10px; }
+        .rank-bar { flex: 1 1 120px; max-width: 260px; height: 6px; background: #eef0f3; border-radius: 999px; overflow: hidden; }
+        .rank-bar-in { height: 100%; background: var(--accent); border-radius: 999px; }
+        .rank-count { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); flex: 0 0 auto; }
+
+        /* 分页 */
+        .pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 12px; flex-wrap: wrap; }
+        .pager .info { font-size: 12.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        .pager button {
+            height: 30px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px;
+            background: #fff; color: var(--text); font-size: 13px; cursor: pointer;
+        }
+        .pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .pager button:disabled { opacity: .45; cursor: not-allowed; }
+
+        .loading, .empty { text-align: center; color: var(--text-secondary); padding: 40px 0; font-size: 14px; }
+
+        .toast {
+            position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+            background: rgba(0, 0, 0, .8); color: #fff; padding: 8px 16px; border-radius: 8px;
+            font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200;
+        }
+        .toast.show { opacity: 1; }
+
+        /* 大图预览 */
+        .mask {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, .55);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; cursor: zoom-out;
+        }
+        .mask.show { display: flex; }
+        .mask img { max-width: 92vw; max-height: 92vh; border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, .4); }
+
+        @media (max-width: 640px) {
+            .content { padding: 12px 12px 48px; }
+            .section { padding: 12px; }
+            .api { max-width: 150px; }
+            .msg-err { max-width: 160px; }
+            .msg-cell { max-width: 300px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="topbar">
+            <h1>报错统计</h1>
+            <div class="topbar-actions">
+                <div class="sel" id="viewSel">
+                    <button class="sel-btn" type="button" id="viewSelBtn">
+                        <span class="sel-val" id="viewSelVal">最近报错</span>
+                        <span class="sel-arrow">▼</span>
+                    </button>
+                    <div class="sel-list">
+                        <div class="sel-item active" data-value="recent">最近报错</div>
+                        <div class="sel-item" data-value="types">报错类型统计</div>
+                    </div>
+                </div>
+                <button class="act" id="refreshBtn">刷新</button>
+            </div>
+        </div>
+        <div class="content" id="content">
+            <div class="loading">加载中…</div>
+        </div>
+    </div>
+
+    <!-- 大图预览 -->
+    <div class="mask" id="imgMask"><img id="imgMaskImg" alt=""></div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const WEB_BASE = new URLSearchParams(location.search).get("__webBase")
+        const ERR_API = WEB_BASE + "/api/qqbot-err"
+        const TYPES_API = WEB_BASE + "/api/qqbot-err/types"
+        const FILE_API = WEB_BASE + "/api/qqbot-err/file/"
+        const PAGE_SIZE = 10
+
+        const $ = id => document.getElementById(id)
+
+        function esc(s) {
+            return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
+        }
+
+        function toast(msg) {
+            const t = $("toast")
+            t.textContent = msg
+            t.classList.add("show")
+            clearTimeout(t._t)
+            t._t = setTimeout(() => t.classList.remove("show"), 1800)
+        }
+
+        function fmtTime(ts) {
+            const d = new Date(Number(ts) || 0)
+            if (!d.getTime()) return "-"
+            const p = n => String(n).padStart(2, "0")
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+        }
+
+        const basename = f => String(f ?? "").split(/[\\/]/).pop()
+
+        function fileUrl(name) { return FILE_API + encodeURIComponent(name) }
+
+        // 兼容新旧记录：新记录含 detail 平铺字段（url/code/err_code/message/trace_id/method），
+        // 旧记录从 err 文本解析（request "URL" error with code(N): 描述）
+        function errInfo(r = {}) {
+            let { url, method, code, err_code: errCode, message, trace_id: traceId, err } = r
+            if (!url || message == null) {
+                const m = String(err || "").match(/^request\s+"([^"]+)"\s+error with code\((\d+)\):\s*([\s\S]+)$/)
+                if (m) {
+                    url = url || m[1]
+                    code = code ?? m[2]
+                    message = message ?? m[3]
+                }
+            }
+            return {
+                url: url || "-",
+                method: String(method || "POST").toUpperCase(),
+                code: code ?? "-",
+                errCode: errCode ?? code ?? "-",
+                message: message || err || "-",
+                traceId: traceId || "",
+            }
+        }
+
+        const shortTrace = t => t ? `${t.slice(0, 10)}…${t.slice(-6)}` : "-"
+
+        // seg 的可访问媒体地址：已落盘 → 文件接口；http(s) → 原地址；否则 null
+        function mediaSrc(seg) {
+            if (seg.fileUrl) return fileUrl(seg.fileUrl)
+            const f = String(seg.file ?? "")
+            if (/^https?:\/\//i.test(f)) return f
+            return ""
+        }
+
+        // 按 seg 类型渲染消息内容
+        function renderSegs(segs) {
+            const list = Array.isArray(segs) ? segs : (segs ? [segs] : [])
+            const parts = list.map(seg => {
+                if (seg == null) return ""
+                if (typeof seg !== "object") return `<span class="txt">${esc(seg)}</span>`
+                switch (seg.type) {
+                    case "text":
+                        return seg.text ? `<span class="txt">${esc(seg.text)}</span>` : ""
+                    case "at":
+                        return `<span class="at">@${esc(seg.qq || seg.user_id || "?")}</span>`
+                    case "face":
+                        return `<span class="tag">[表情]</span>`
+                    case "image": {
+                        const src = mediaSrc(seg)
+                        return src
+                            ? `<img class="media" src="${esc(src)}" loading="lazy" data-preview>`
+                            : `<span class="tag">[图片不可用]</span>`
+                    }
+                    case "record":
+                    case "audio": {
+                        const src = mediaSrc(seg)
+                        return src
+                            ? `<audio class="media" controls preload="none" src="${esc(src)}"></audio>`
+                            : `<span class="tag">[语音不可用]</span>`
+                    }
+                    case "video": {
+                        const src = mediaSrc(seg)
+                        return src
+                            ? `<video class="media" controls preload="metadata" src="${esc(src)}"></video>`
+                            : `<span class="tag">[视频不可用]</span>`
+                    }
+                    case "file": {
+                        const src = mediaSrc(seg)
+                        const name = esc(basename(seg.name || seg.file) || "文件")
+                        if (!src) return `<span class="tag">[文件：${name}]</span>`
+                        // 本地落盘文件走接口下载；外部 URL 直接打开
+                        const href = seg.fileUrl ? `${src}?download=1` : src
+                        return `<a class="file-link" href="${esc(href)}"><span>📎 ${name}</span></a>`
+                    }
+                    case "reply":
+                        return `<span class="tag">[回复]</span>`
+                    case "button":
+                        return `<span class="tag">[按钮]</span>`
+                    case "node":
+                        return Array.isArray(seg.data)
+                            ? seg.data.map(n => renderSegs(n?.message)).join(" ")
+                            : `<span class="tag">[合并转发]</span>`
+                    default: {
+                        const t = seg.text || seg.content || JSON.stringify(seg)
+                        return `<span class="tag">${esc(String(t).slice(0, 200))}</span>`
+                    }
+                }
+            })
+            const html = parts.filter(Boolean).join(" ")
+            return html || `<span class="tag">[空消息]</span>`
+        }
+
+        function botCell(r, botInfo) {
+            const info = botInfo[String(r.self_id || "")] || {}
+            const avatar = info.avatar || `https://q.qlogo.cn/g?b=qq&s=0&nk=${encodeURIComponent(r.self_id || "")}`
+            const name = info.nickname || r.self_id || "-"
+            return `<div class="bot-cell">
+                <img src="${esc(avatar)}" alt="">
+                <div>
+                    <div class="bot-name" title="${esc(name)}">${esc(name)}</div>
+                    <div class="bot-qq">${esc(r.self_id || "")}</div>
+                </div>
+            </div>`
+        }
+
+        // ===== 最近报错 =====
+        const recent = {
+            page: 1, total: 0, totalPages: 1,
+            async load() {
+                $("content").innerHTML = `<div class="loading">加载中…</div>`
+                try {
+                    const res = await fetch(`${ERR_API}?page=${recent.page}&limit=${PAGE_SIZE}`)
+                    const data = await res.json()
+                    if (!data.ok) throw new Error(data.error || "加载失败")
+                    recent.total = data.total || 0
+                    recent.totalPages = Math.max(1, Math.ceil(recent.total / PAGE_SIZE))
+                    if (recent.page > recent.totalPages) recent.page = recent.totalPages
+                    renderRecent(data)
+                } catch (e) {
+                    $("content").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`
+                }
+            },
+        }
+
+        function renderRecent(data) {
+            const { list = [], botInfo = {}, total = 0 } = data
+            if (!list.length) {
+                $("content").innerHTML = `<div class="section"><div class="empty">暂无报错记录</div></div>`
+                return
+            }
+            const rows = list.map(r => {
+                const info = errInfo(r)
+                return `<tr>
+                <td><div class="api"><span class="api-method">${esc(info.method)}</span> <span class="api-url" title="${esc(info.url)}">${esc(info.url)}</span></div></td>
+                <td><span class="code-badge">${esc(info.code)}</span></td>
+                <td><span class="code-badge">${esc(info.errCode)}</span></td>
+                <td><div class="msg-err" title="${esc(info.message)}">${esc(info.message)}</div></td>
+                <td><span class="trace" data-trace="${esc(info.traceId)}" title="${info.traceId ? "点击复制 trace_id" : "-"}">${esc(shortTrace(info.traceId))}</span></td>
+                <td>${botCell(r, botInfo)}</td>
+                <td class="time-cell">${esc(fmtTime(r.timestamp))}</td>
+                <td class="msg-cell"><div class="msg-body">${renderSegs(r.segs)}</div></td>
+                <td><span class="attempt-badge">第${esc(r.attempt ?? "-")}轮</span></td>
+            </tr>`
+            }).join("")
+
+            $("content").innerHTML = `
+                <div class="section">
+                    <h2>最近报错 <span class="tag">共 ${total} 条</span></h2>
+                    <div class="tbl-wrap">
+                        <table class="tbl">
+                            <thead><tr>
+                                <th>报错接口</th><th>code</th><th>err_code</th><th>报错信息</th><th>trace_id</th><th>Bot</th><th>时间</th><th>消息内容</th><th>轮数</th>
+                            </tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                    <div class="pager">
+                        <span class="info">第 ${recent.page} / ${recent.totalPages} 页，共 ${total} 条</span>
+                        <button id="prevBtn" ${recent.page <= 1 ? "disabled" : ""}>上一页</button>
+                        <button id="nextBtn" ${recent.page >= recent.totalPages ? "disabled" : ""}>下一页</button>
+                    </div>
+                </div>`
+
+            $("prevBtn").onclick = () => { if (recent.page > 1) { recent.page--; recent.load() } }
+            $("nextBtn").onclick = () => { if (recent.page < recent.totalPages) { recent.page++; recent.load() } }
+            bindPreview()
+        }
+
+        // ===== 类型统计 =====
+        const types = {
+            lastTopN: 50,
+            async load() {
+                // 先取值再清空 DOM（清空后输入框销毁，getter 将读不到值）
+                this.lastTopN = Math.min(100, Math.max(1, Math.round(Number($("topNInput")?.value) || this.lastTopN)))
+                const topN = this.lastTopN
+                $("content").innerHTML = `<div class="loading">加载中…</div>`
+                try {
+                    const res = await fetch(`${TYPES_API}?topN=${topN}`)
+                    const data = await res.json()
+                    if (!data.ok) throw new Error(data.error || "加载失败")
+                    renderTypes(data.rank || [], topN)
+                } catch (e) {
+                    $("content").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`
+                }
+            },
+        }
+
+        function renderTypes(rank, topN) {
+            if (!rank.length) {
+                $("content").innerHTML = `<div class="section"><div class="empty">暂无报错记录</div></div>`
+                return
+            }
+            const max = Math.max(...rank.map(r => r.count), 1)
+            const rows = rank.map(r => `<tr>
+                <td class="rank-name" title="${esc(r.type)}">${esc(r.type)}</td>
+                <td><div class="rank-bar-wrap">
+                    <div class="rank-bar"><div class="rank-bar-in" style="width:${Math.max(2, Math.round(r.count / max * 100))}%"></div></div>
+                    <span class="rank-count">${r.count}</span>
+                </div></td>
+            </tr>`).join("")
+
+            $("content").innerHTML = `
+                <div class="section">
+                    <h2>报错类型统计 <span class="tag">近 30 天 · 按次数降序</span>
+                        <span class="topn">
+                            显示 <input type="number" id="topNInput" min="1" max="100" value="${topN}"> 条
+                            <button id="topNBtn" type="button">应用</button>
+                        </span>
+                    </h2>
+                    <div class="tbl-wrap">
+                        <table class="tbl">
+                            <thead><tr><th>报错名称</th><th>次数</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`
+
+            $("topNBtn").onclick = () => types.load()
+            $("topNInput").onkeydown = e => { if (e.key === "Enter") types.load() }
+        }
+
+        // ===== 大图预览 =====
+        function bindPreview() {
+            $("content").querySelectorAll("img[data-preview]").forEach(img => {
+                img.onclick = () => {
+                    $("imgMaskImg").src = img.src
+                    $("imgMask").classList.add("show")
+                }
+            })
+            // 点击 trace_id 复制完整值
+            $("content").querySelectorAll(".trace").forEach(el => {
+                el.onclick = () => {
+                    if (!el.dataset.trace) return
+                    navigator.clipboard?.writeText(el.dataset.trace)
+                        .then(() => toast("已复制 trace_id"), () => toast("复制失败"))
+                }
+            })
+        }
+        $("imgMask").onclick = () => $("imgMask").classList.remove("show")
+
+        // ===== 视图切换（自定义下拉）/ 刷新 =====
+        let view = "recent"
+
+        function load() {
+            if (view === "types") types.load()
+            else recent.load()
+        }
+
+        const viewSel = $("viewSel")
+        $("viewSelBtn").onclick = e => {
+            e.stopPropagation()
+            viewSel.classList.toggle("open")
+        }
+        viewSel.querySelectorAll(".sel-item").forEach(item => {
+            item.onclick = () => {
+                if (view !== item.dataset.value) {
+                    view = item.dataset.value
+                    $("viewSelVal").textContent = item.textContent
+                    viewSel.querySelectorAll(".sel-item").forEach(i => i.classList.toggle("active", i === item))
+                    load()
+                }
+                viewSel.classList.remove("open")
+            }
+        })
+        document.addEventListener("click", e => {
+            if (!viewSel.contains(e.target)) viewSel.classList.remove("open")
+        })
+
+        $("refreshBtn").onclick = load
+        load()
+    </script>
+</body>
+
+</html>

@@ -1,6 +1,7 @@
 // 发送 / 撤回消息方法
 import { config } from "./context.js"
 import { saveSentMessage } from "../lib/message.js"
+import { recordSendErrors } from "../lib/errorStore.js"
 
 export const sendMethods = {
     // QQ官方Bot群聊默认无主动消息权限，媒体/文件消息必须携带被动回复凭证(msg_id/event_id)。
@@ -19,7 +20,7 @@ export const sendMethods = {
         let msgs
 
         // 逐条 shift 发送，失败时返回剩余未发的消息
-        const sendMsg = async (msgList) => {
+        const sendMsg = async (msgList, attempt = 1) => {
             const pending = [...msgList]
             while (pending.length > 0) {
                 const segs = pending.shift()
@@ -33,7 +34,16 @@ export const sendMethods = {
                     if (Bot.autoRecordMessage === true) saveSentMessage(data, segs, ret)
                 } catch (err) {
                     Bot.makeLog("error", ["发送消息错误", segs, err], data.self_id)
-                    rets.error.push(err)
+                    rets.error.push({
+                        ...err.detail,
+                        err:err.message,
+                        segs:segs,
+                        timestamp: Date.now(),
+                        msg: data?.msg,
+                        self_id: data?.self_id,
+                        nickname: data?.bot?.nickname || '未知',
+                        attempt  
+                    })
                     return pending
                 }
             }
@@ -55,10 +65,10 @@ export const sendMethods = {
             msgs = await this.makeRawMarkdownMsg(data, msg)
         }
 
-        let pending = await sendMsg(msgs)
+        let pending = await sendMsg(msgs, 1)
         if (pending.length > 0) {
             // 第二次：只重试失败的消息
-            pending = await sendMsg(pending)
+            pending = await sendMsg(pending, 2)
 
             if (pending.length > 0) {
                 // 第三次：切换格式，重建全部消息再发
@@ -70,18 +80,21 @@ export const sendMethods = {
                 } else {
                     msgs = await this.makeMsg(data, msg)
                 }
-                pending = await sendMsg(msgs)
+                pending = await sendMsg(msgs, 3)
 
                 if (pending.length > 0) {
                     // 第四次：纯文本兜底
                     msgs = await this.makeMsg(data, msg)
-                    await sendMsg(msgs)
+                    await sendMsg(msgs, 4)
                 }
             }
         }
 
         if (Array.isArray(data._ret_id))
             data._ret_id.push(...rets.message_id)
+
+        if (rets.error.length > 0 && config.recordSendErrors)
+            recordSendErrors(rets.error)
 
         return rets
     },
@@ -162,8 +175,7 @@ export const sendMethods = {
                 case "button":
                     continue
                 case "node":
-                    for (const { message } of i.data)
-                        messages.push(...(await this.makeGuildMsg(data, message)))
+                    messages.push(...(await this.makeForwardMsg(data, i.data, "makeGuildMsg")))
                     continue
                 case "raw":
                     if (Array.isArray(i.data)) {

@@ -9,6 +9,8 @@
 //   - pluginDir  : 插件目录绝对路径
 //   - logger     : 日志对象
 import path from "node:path"
+import fs from "node:fs"
+import { getSendErrors, getSendErrorTypes } from "../lib/errorStore.js"
 
 // 不在页面展示的字段（含敏感信息或无需 Web 设置的）
 const HIDDEN = new Set(["tips", "token", "keyboardid", "toQRCode", "toBotUpload"])
@@ -27,6 +29,7 @@ const BOOLEAN_FIELDS = [
   { key: "newapi", label: "使用新API", desc: "开启后使用新版 API 接入 QQBot（需重启后生效）", inBot: true },
   { key: "internal", label: "分片使用内网上传", desc: "开启后分片上传使用内网上传，可大幅提升文件发送速度，非腾讯云服务器不用开启此选项（需重启后生效）", inBot: true },
   { key: "stat", label: "使用统计", desc: "按机器人记录每日使用人数/群数、留存与增减，并在 Web 控制台展示（需重启后生效）" },
+  { key: "recordSendErrors", label: "记录发送报错", desc: "发送失败时记录报错详情（接口/错误码/trace_id 等）与消息附件（自动落盘至 data/errFile，避免 URL 过期），供 Web 控制台「报错统计」页查看，保留 30 天" },
 ]
 
 // 全局数字字段
@@ -38,9 +41,11 @@ const NUMBER_FIELDS = [
   { key: "concurrency", label: "并发数", desc: "分片上传并发数量，如未使用内网上传请将此选项调整到1，如果使用内网且成功配置最大可调制20（需重启后生效）", default: 1, inBot: true, integer: true, min: 1, max: 20 },
 ]
 
-// config.bot 子对象中的下拉选择字段（基础设置中显示为下拉框，值为字符串）
-const BOT_SELECT_FIELDS = [
-  { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou" },
+// 下拉选择字段（基础设置中显示为下拉框，值为字符串）
+// inBot: true 表示该字段位于 config.bot 子对象中（如 region）
+const SELECT_FIELDS = [
+  { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou", inBot: true },
+  { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式：逐条拆发（默认）/ 合并为一条消息，条目间用分割线隔开 / 渲染为图片。渲染图片失败会自动回退合并发送，再失败回退逐条拆发，保存后实时生效", default: "split", options: ["split", "merge", "image"] },
 ]
 
 // 多值映射字段（按 botQQ 索引），值在页面显示为列表
@@ -80,6 +85,7 @@ export function init(ctx) {
   })
 
   // 使用统计页：仅在统计开关开启时注册（关闭时不初始化展示页，需重启生效）
+  let statPageOn = false
   try {
     if (getCfg().config.stat === true) {
       ctx.registerPage({
@@ -88,10 +94,19 @@ export function init(ctx) {
         icon: "📊",
         src: "stat.html",
       })
+      statPageOn = true
     }
   } catch (e) {
     ctx.logger?.warn?.(`[QQBot] 使用统计页未注册: ${e.message}`)
   }
+
+  // 报错统计页：始终注册
+  ctx.registerPage({
+    id: "qqbot-err",
+    title: "报错统计",
+    icon: "❗",
+    src: "errors.html",
+  })
 
   let apiReady = false
   function registerApi() {
@@ -113,8 +128,10 @@ export function init(ctx) {
             : (config[f.key] != null ? config[f.key] : f.default)
         }
         const texts = {}
-        for (const f of BOT_SELECT_FIELDS) {
-          texts[f.key] = config.bot?.[f.key] != null ? config.bot[f.key] : f.default
+        for (const f of SELECT_FIELDS) {
+          texts[f.key] = f.inBot
+            ? (config.bot?.[f.key] != null ? config.bot[f.key] : f.default)
+            : (config[f.key] != null ? config[f.key] : f.default)
         }
         const md = config.markdown || {}
         const maps = {}
@@ -202,11 +219,18 @@ export function init(ctx) {
           config.markdown.batchSize = body.markdownBatchSize
         }
 
-        // bot 子对象文本字段
+        // 下拉选择字段（含 bot 子对象与顶层）
         if (body.texts) {
-          config.bot = config.bot || {}
-          for (const f of BOT_SELECT_FIELDS) {
-            if (body.texts[f.key] != null) config.bot[f.key] = String(body.texts[f.key])
+          for (const f of SELECT_FIELDS) {
+            if (body.texts[f.key] == null) continue
+            // 白名单校验，非法值忽略
+            if (f.options && !f.options.includes(String(body.texts[f.key]))) continue
+            if (f.inBot) {
+              config.bot = config.bot || {}
+              config.bot[f.key] = String(body.texts[f.key])
+            } else {
+              config[f.key] = String(body.texts[f.key])
+            }
           }
         }
 
@@ -252,6 +276,84 @@ export function init(ctx) {
         if (!bot) return res.status(400).json({ ok: false, error: "缺少 bot" })
         const cleared = await Bot.QQBotStat.clearStat(bot)
         res.json({ ok: true, cleared })
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // ====== 报错统计 ======
+    const ERR_FILE_DIR = path.join(ctx.pluginDir, "data", "errFile")
+    // 文件名白名单：{md5}.{ext}，防路径穿越；也用于识别已落盘的附件
+    const NAME_RE = /^[a-f0-9]{32}\.[a-z0-9]{1,8}$/i
+    const MIME = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
+      webp: "image/webp", bmp: "image/bmp",
+      mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm",
+      mp3: "audio/mpeg", m4a: "audio/mp4", amr: "audio/amr", wav: "audio/wav",
+      silk: "application/octet-stream", bin: "application/octet-stream",
+    }
+
+    // 错误列表（按时间倒序分页）
+    ctx.registerApi("get", "/qqbot-err", async (req, res) => {
+      try {
+        const q = new URLSearchParams((req.url || "").split("?")[1] || "")
+        const page = Math.max(1, Number(q.get("page")) || 1)
+        const limit = Math.min(50, Math.max(1, Number(q.get("limit")) || 10))
+        const data = await getSendErrors({ page, limit })
+
+        // bot 昵称/头像
+        const botInfo = {}
+        for (const r of data.list) {
+          const id = String(r.self_id || "")
+          if (!id || botInfo[id]) continue
+          botInfo[id] = {
+            nickname: r.nickname || Bot[id]?.nickname || Bot[id]?.name || id,
+            avatar: `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}`,
+          }
+        }
+
+        // 落盘的附件 seg：file 为服务器本地路径，前端无法直接访问；
+        // 文件名为 {md5}.{ext}（与文件接口白名单一致）时附加 fileUrl 供前端访问
+        for (const r of data.list) {
+          for (const seg of Array.isArray(r.segs) ? r.segs : (r.segs ? [r.segs] : [])) {
+            if (!seg?.file) continue
+            const base = String(seg.file).split(/[\\/]/).pop()
+            if (NAME_RE.test(base)) seg.fileUrl = base
+          }
+        }
+
+        res.json({ ok: true, ...data, botInfo })
+      } catch (e) {
+        logger.error(e)
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // 错误类型排行（近 30 天，按次数降序）
+    ctx.registerApi("get", "/qqbot-err/types", async (req, res) => {
+      try {
+        const q = new URLSearchParams((req.url || "").split("?")[1] || "")
+        const topN = Math.min(100, Math.max(1, Number(q.get("topN")) || 50))
+        const rank = await getSendErrorTypes(topN)
+        res.json({ ok: true, rank })
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message })
+      }
+    })
+
+    // 附件文件查看 / 下载（?download=1 时以附件形式下发）
+    ctx.registerApi("get", "/qqbot-err/file/:name", (req, res) => {
+      try {
+        const name = String(req.params.name || "")
+        if (!NAME_RE.test(name)) return res.status(400).json({ ok: false, error: "非法文件名" })
+        const fp = path.join(ERR_FILE_DIR, name)
+        if (!fs.existsSync(fp)) return res.status(404).json({ ok: false, error: "文件不存在或已过期" })
+        const ext = name.split(".").pop().toLowerCase()
+        res.setHeader("Content-Type", MIME[ext] || "application/octet-stream")
+        res.setHeader("Cache-Control", "private, max-age=86400")
+        if (req.query.download)
+          res.setHeader("Content-Disposition", `attachment; filename="${name}"`)
+        res.sendFile(fp)
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message })
       }
