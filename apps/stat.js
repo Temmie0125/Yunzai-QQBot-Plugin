@@ -278,6 +278,14 @@ function botAvatarOf(id) {
         || `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}`
 }
 
+const CMD_LOCK = new Map()
+function acquireLock(key, cdMs = 5000) {
+    const now = Date.now()
+    if ((CMD_LOCK.get(key) || 0) > now) return false
+    CMD_LOCK.set(key, now + cdMs)
+    return true
+}
+
 export class QQBotErrStat extends plugin {
     constructor() {
         super({
@@ -305,9 +313,11 @@ export class QQBotErrStat extends plugin {
     }
 
     async recentErrs() {
+        if (this.e.adapter_id !== "QQBot") return
         if (!config.recordSendErrors) {
             return this.reply("发送报错记录未开启，可在「QQBot 设置 - 基础设置」中开启「记录发送报错」")
         }
+        if (!acquireLock("recentErrs")) return
         const n = this.argCount(20)
         let data
         try {
@@ -317,20 +327,22 @@ export class QQBotErrStat extends plugin {
             return this.reply("报错记录查询失败，请查看日志")
         }
         const { list = [] } = data
-        if (!list.length) return this.reply("暂无报错记录")
+        if (!list.length) {
+            return this.reply("暂无报错记录")
+        }
 
-        const lines = ["| Bot | 信息 | 接口 | code | err_code | trace_id | 时间（第x轮） |","| --- | --- | --- | --- | --- | --- | ---"]
+        const lines = ["| Bot | 报错信息 | 接口 | code | err_code | trace_id | 时间（第x轮） |","| --- | --- | --- | --- | --- | --- | ---"]
         for (const r of list) {
             const info = errInfo(r)
             const avatar = botAvatarOf(r.self_id || this.e.self_id)
-            const nickname = Bot[r.self_id]?.nickname || "未知"
+            const nickname = r.nickname || Bot[r.self_id]?.nickname || "未知"
             lines.push(
                 `| ![img #30px #30px](${avatar})${nickname} ` +
-                `| 信息：${info.message} ` +
-                `| 接口：${info.method} ${info.url} ` +
-                `| code：${info.code} ` +
-                `| err_code：${info.errCode} ` +
-                `| trace_id：${info.traceId} ` +
+                `| ${info.message} ` +
+                `| ${info.method} ${info.url} ` +
+                `| ${info.code} ` +
+                `| ${info.errCode} ` +
+                `| ${info.traceId} ` +
                 `| ${fmtTs(r.timestamp)}（第${r.attempt ?? "-"}轮）|`
             )
         }
@@ -340,9 +352,11 @@ export class QQBotErrStat extends plugin {
     }
 
     async errRank() {
+        if (this.e.adapter_id !== "QQBot") return
         if (!config.recordSendErrors) {
             return this.reply("发送报错记录未开启，可在「QQBot 设置 - 基础设置」中开启「记录发送报错」")
         }
+        if (!acquireLock("errRank")) return
         const n = this.argCount(10)
         let rank
         try {
@@ -351,7 +365,9 @@ export class QQBotErrStat extends plugin {
             logger.error(`[QQBot] 报错排行查询失败: ${err?.stack || err}`)
             return this.reply("报错排行查询失败，请查看日志")
         }
-        if (!rank.length) return this.reply("暂无报错记录")
+        if (!rank.length) {
+            return this.reply("暂无报错记录")
+        }
 
         const md = `**报错排行（近 30 天 Top ${rank.length}）**\n| 报错类型 | 次数 |\n| --- | --- |\n${rank
             .map(r => `| ${r.type} | ${r.count}次 |`)

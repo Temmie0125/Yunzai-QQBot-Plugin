@@ -307,7 +307,7 @@ export function init(ctx) {
           const id = String(r.self_id || "")
           if (!id || botInfo[id]) continue
           botInfo[id] = {
-            nickname: Bot[id]?.nickname || Bot[id]?.name || id,
+            nickname: r.nickname || Bot[id]?.nickname || Bot[id]?.name || id,
             avatar: `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}`,
           }
         }

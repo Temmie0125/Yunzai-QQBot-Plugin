@@ -30,6 +30,7 @@ export const sendMethods = {
                         timestamp: Date.now(),
                         msg: data?.msg,
                         self_id: data?.self_id,
+                        nickname: data?.bot?.nickname || '未知',
                         attempt  
                     })
                     return pending
