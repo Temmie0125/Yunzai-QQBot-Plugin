@@ -384,7 +384,7 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 <details><summary>合并转发发送方式控制</summary>
 
-- 合并转发消息可以选择三种发送方式`split=逐条拆发（默认）`、`merge=合并为一条消息，条目间用分割线隔开`、`image=渲染为一张图片发送`,可到Yunzai/config/QQBot.yaml中将`recordSendErrors`转为对应的值即可(可在webadapter中快捷设置)
+- 合并转发消息可以选择三种发送方式`split=逐条拆发（默认）`、`merge=合并为一条消息，条目间用分割线隔开`、`image=渲染为一张图片发送`、`url=伪造合并转发页面并发送链接`、`card=伪造合并转发页面并发送跳转卡片`,可到Yunzai/config/QQBot.yaml中将`recordSendErrors`转为对应的值即可(可在webadapter中快捷设置),想要使用url和card模式需要确保自己服务器足够安全
 
 </details>
 

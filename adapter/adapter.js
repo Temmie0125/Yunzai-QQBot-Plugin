@@ -1,6 +1,7 @@
 // QQBot 适配器主类：组合各方法模块，导出单例 adapter
 import { config, pkg } from "./context.js"
 import { buildMethods } from "./build.js"
+import { forwardMethods } from "./forward.js"
 import { sendMethods } from "./send.js"
 import { pickMethods } from "./pick.js"
 import { messageMethods } from "./message.js"
@@ -24,6 +25,7 @@ class QQBotAdapter {
 Object.assign(
     QQBotAdapter.prototype,
     buildMethods,
+    forwardMethods,
     sendMethods,
     pickMethods,
     messageMethods,
