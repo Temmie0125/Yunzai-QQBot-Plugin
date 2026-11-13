@@ -38,7 +38,7 @@ export const pickMethods = {
                 let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
                 return data
             },
-            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
+            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0?t=${Date.now()}`,
         }
     },
 
@@ -71,7 +71,7 @@ export const pickMethods = {
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMembers(i.group_id, [i.user_id]),
             kick: () => i.bot.sdk.kickGroupMembers(i.group_id, [i.user_id]), //兼容
-            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0`,
+            getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0?t=${Date.now()}`,
             muteGroupMember: (seconds) => {
                 Bot.makeLog(
                     "info",
@@ -391,6 +391,7 @@ export const pickMethods = {
             bot: event.sender.bot,
             nickname: event.sender.nickname,
             avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0?t=${Date.now()}`,
+            new_avatar: event.sender.avatar,
             unionid: event.sender.union_openid,
             openid: event.sender.user_id,
         }
@@ -465,11 +466,13 @@ export const pickMethods = {
             card: event.sender.card,
             nickname: event.sender.nickname || event.sender.card,
             avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0?t=${Date.now()}`,
+            new_avatar: event.sender.avatar,
             unionid: event.sender.union_openid || "",
             openid: event.sender.user_id || "",
             role: event.sender.role || "member",
         }
         data.group_id = `${data.self_id}${this.sep}${event.group_id}`
+        data.group_openid = event.group_id
         data.group_unionid = event.group_unionid
 
         let group_data = await data.bot.gl.get(data.group_id)
