@@ -190,7 +190,15 @@ export const pickMethods = {
                     }
                     i.bot.gml.get(group_id)?.set(i.self_id, botStatus)
                     i.bot.gml.get(group_id)?.set(`${i.self_id}${this.sep}${botStatus.openid}`, botStatus)
+                    if (!config.bot_openid[i.self_id]){
+                        config.bot_openid[i.self_id] = botStatus.openid
+                        await configSave()
+                    }
                     return botStatus
+                }
+                if (!config.bot_openid[i.self_id] && bot.openid){
+                    config.bot_openid[i.self_id] = bot.openid
+                    await configSave()
                 }
                 return bot
             },
@@ -378,14 +386,13 @@ export const pickMethods = {
     },
 
     async makeFriendMessage(data, event) {
-        let user = await data.bot.fl.get(`${data.self_id}${this.sep}${event.sender.user_id}`)
         data.sender = {
             user_id: `${data.self_id}${this.sep}${event.sender.user_id}`,
-            bot: event.author?.bot,
-            nickname: event.sender.user_name || user?.nickname || "",
-            avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0`,
-            unionid: event.author?.union_openid || user?.unionid || "",
-            openid: event.sender?.user_id || user?.openid || "",
+            bot: event.sender.bot,
+            nickname: event.sender.nickname,
+            avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0?t=${Date.now()}`,
+            unionid: event.sender.union_openid,
+            openid: event.sender.user_id,
         }
         Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
@@ -419,7 +426,30 @@ export const pickMethods = {
             const full = await getMessageByMsgIdx(refIdx)
             if (full) return full
             const message_id = await getMessageIdByMsgIdx(refIdx)
-            return message_id ? { message_id, message: [] } : undefined
+            let message = [] 
+            for (const msg_element of data.msg_elements){
+                if(msg_element.attachments){
+                for (const attachment of msg_element.attachments){
+                    const { content_type, content, ...rest } = attachment
+                    message.push({
+                        type:content_type.split('/')[0],
+                        ...(content !== undefined && { summary: content }),
+                        ...rest
+                    })
+                }
+                }
+                if(msg_element.content) 
+                    message.push({
+                        type:'text',
+                        text: msg_element.content
+                    })
+                if(msg_element.ark_data) 
+                    message.push({
+                        type:'ark',
+                        ...msg_element.ark_data
+                    })
+            }
+            return { message_id, message }
         }
 
         data.getGenerateUrl = callback_data => data.bot.sdk.getGenerateUrl(callback_data)
@@ -431,14 +461,16 @@ export const pickMethods = {
     async makeGroupMessage(data, event) {
         data.sender = {
             user_id: `${data.self_id}${this.sep}${event.sender.user_id}`,
-            bot: event.author?.bot,
-            nickname: event.sender.user_name,
-            avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0`,
-            unionid: event.author?.union_openid || "",
-            openid: event.sender?.user_id || "",
-            role: event.author?.member_role || "member",
+            bot: event.sender.bot,
+            card: event.sender.card,
+            nickname: event.sender.nickname || event.sender.card,
+            avatar: `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${event.sender.user_id}/0?t=${Date.now()}`,
+            unionid: event.sender.union_openid || "",
+            openid: event.sender.user_id || "",
+            role: event.sender.role || "member",
         }
         data.group_id = `${data.self_id}${this.sep}${event.group_id}`
+        data.group_unionid = event.group_unionid
 
         let group_data = await data.bot.gl.get(data.group_id)
         if (!group_data || !group_data?.group_name) {
@@ -486,11 +518,7 @@ export const pickMethods = {
         data.atBot = !!atUser?.bot
 
         if (!config.bot_openid[data.self_id]) {
-            let me = data.mentions.find(m => m.is_you)
-            if (me?.member_openid) {
-                config.bot_openid[data.self_id] = me.member_openid
-                await configSave()
-            }
+            await data.bot.pickGroup(data.group_id).getBotStatus()
         }
 
         if (config.bot_openid[data.self_id]) {
@@ -498,11 +526,12 @@ export const pickMethods = {
         }
         data.getBotInfo = config.bot_openid[data.self_id]
             ? async () => {
-                return await data.bot.sdk.getGroupMemberInfo(data.group_id.split(this.sep)[1], config.bot_openid[data.self_id])
+                return await data.group.getGroupMemberInfo(config.bot_openid[data.self_id])
             }
             : async () => {
-                logger.error("当前未记录bot的openid，在全量群艾特机器人后会自动记录")
-                return {}
+                let botState = await data.group.getBotStatus()
+                if (!botState?.openid) botState = await data.group.getBotStatus(true)
+                return await data.group.getGroupMemberInfo(botState?.openid)
             }
 
         data.platform = "QQ-group"
@@ -562,14 +591,14 @@ export const pickMethods = {
             ...data.bot.fl.get(`qg_${event.sender.user_id}`),
             ...event.sender,
             user_id: `qg_${event.sender.user_id}`,
-            bot: event.author?.bot,
-            nickname: event.sender.user_name,
-            avatar: event.author.avatar,
+            bot: event.sender.bot,
+            nickname: event.sender.nickname,
+            avatar: event.sender.avatar,
             guild_id: event.guild_id,
             channel_id: event.channel_id,
             src_guild_id: event.src_guild_id,
-            unionid: event.author?.union_openid || "",
-            openid: event.sender?.user_id
+            unionid: event.sender.union_openid || "",
+            openid: event.sender.user_id
         }
         Bot.makeLog("info", `频道私聊消息：[${data.sender.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
@@ -590,14 +619,14 @@ export const pickMethods = {
             ...data.bot.fl.get(`qg_${event.sender.user_id}`),
             ...event.sender,
             user_id: `qg_${event.sender.user_id}`,
-            bot: event.author?.bot,
-            nickname: event.sender.user_name,
-            card: event.member.nick,
-            avatar: event.author.avatar,
+            bot: event.sender.bot,
+            nickname: event.sender.nickname,
+            card: event.sender.card,
+            avatar: event.sender.avatar,
             src_guild_id: event.guild_id,
             src_channel_id: event.channel_id,
-            unionid: event.author?.union_openid || "",
-            openid: event.sender?.user_id
+            unionid: event.sender.union_openid || "",
+            openid: event.sender.user_id
         }
         data.group_id = `qg_${event.guild_id}-${event.channel_id}`
 
