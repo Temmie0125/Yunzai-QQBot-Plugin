@@ -383,6 +383,24 @@ export const forwardMethods = {
             const msg = item?.message
             const parts = Array.isArray(msg) ? msg.flat(Infinity) : (msg == null ? [] : [msg])
             if (!parts.length) continue
+            for (const part of parts){
+                if (part.type === "image"){
+                    if (!part.height || !part.width) {
+                        try {
+                            const buffer = await Bot.Buffer(part.file)
+                            const size = imageSize(buffer)
+                            part.width = size.width
+                            part.height = size.height
+                        } catch {
+                            continue
+                        }
+                    }
+                    if (part.height > 100){
+                        part.width = Math.floor(part.width * 100 / part.height)
+                        part.height = 100
+                    }
+                }
+            }
             result.push(...parts, separator)
         }
         if (result.length) result.pop()
