@@ -12,7 +12,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
         }
 
-        .container { width: 100%; max-width: 460px; margin: 0 auto; padding: 18px 16px; }
+        /* 靠左显示；手机端自然占满，桌面端限宽 */
+        .container { width: 100%; max-width: 460px; padding: 18px 16px; }
 
         .msg {
             display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-start;
@@ -66,6 +67,7 @@
             flex: 1; min-width: 0; font-size: 13px; color: #1f2329;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
+        .file-ext { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: #8a909b; letter-spacing: .3px; }
         a.dl-arrow {
             flex: 0 0 auto; align-self: flex-end; margin-left: 2px; margin-bottom: 8px;
             width: 28px; height: 28px; border-radius: 50%;
@@ -73,11 +75,129 @@
             color: #8a909b; text-decoration: none;
         }
         a.dl-arrow:hover { background: #d9dde5; color: #4f6ef7; }
+
+        /* 图片灯箱：PC 弹窗缩放 / 手机全屏预览（QQ 风格） */
+        #lightbox {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0, 0, 0, .92);
+            display: flex; align-items: center; justify-content: center;
+            touch-action: none; cursor: zoom-out;
+        }
+        #lightbox[hidden] { display: none; }
+        #lb-img {
+            max-width: 94vw; max-height: 94vh;
+            user-select: none; -webkit-user-drag: none; will-change: transform;
+        }
+        .lb-close {
+            position: fixed; top: 12px; right: 14px; z-index: 1;
+            width: 36px; height: 36px; border: 0; border-radius: 50%;
+            background: rgba(255, 255, 255, .15); color: #fff;
+            font-size: 18px; line-height: 1; cursor: pointer;
+        }
+        .lb-close:hover { background: rgba(255, 255, 255, .28); }
+        .lb-hint {
+            position: fixed; left: 14px; bottom: 12px;
+            font-size: 12px; color: rgba(255, 255, 255, .4);
+        }
     </style>
 </head>
 
 <body>
     <div class="container">{{@ html}}</div>
+    <div id="lightbox" hidden>
+        <button class="lb-close" title="关闭">✕</button>
+        <span class="lb-hint">滚轮/双指缩放 · 拖动查看 · 点空白关闭</span>
+        <img id="lb-img" alt="">
+    </div>
+    <script>
+    (() => {
+        const lb = document.getElementById("lightbox")
+        const img = document.getElementById("lb-img")
+        let scale = 1, tx = 0, ty = 0, startDist = 0, startX = 0, startY = 0
+
+        const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})` }
+        const open = src => {
+            img.src = src
+            scale = 1; tx = ty = 0
+            apply()
+            lb.hidden = false
+            document.body.style.overflow = "hidden"
+        }
+        const close = () => {
+            lb.hidden = true
+            img.src = ""
+            document.body.style.overflow = ""
+        }
+        // 以指针/捏合中点为锚缩放（变换原点在图片中心，故按中心偏移量换算平移）
+        const zoom = (k, cx, cy) => {
+            const ns = Math.min(8, Math.max(1, scale * k))
+            if (cx != null) {
+                const r = lb.getBoundingClientRect()
+                const fx = cx - (r.left + r.width / 2), fy = cy - (r.top + r.height / 2)
+                const f = ns / scale
+                tx = fx * (1 - f) + tx * f
+                ty = fy * (1 - f) + ty * f
+            }
+            scale = ns
+            if (scale === 1) tx = ty = 0
+            apply()
+        }
+
+        // 拦截图片点击：QQ 内置 webview 对 target=_blank 无反应，改为页内灯箱
+        document.addEventListener("click", e => {
+            const a = e.target.closest("a.img-link")
+            if (a) {
+                e.preventDefault()
+                const im = a.querySelector("img")
+                if (im) open(im.src)
+            } else if (!lb.hidden && e.target === lb) {
+                close()
+            }
+        })
+        document.querySelector(".lb-close").addEventListener("click", close)
+        document.addEventListener("keydown", e => { if (e.key === "Escape" && !lb.hidden) close() })
+
+        lb.addEventListener("wheel", e => {
+            e.preventDefault()
+            zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY)
+        }, { passive: false })
+
+        // 双击：1x ↔ 2.5x 切换
+        lb.addEventListener("dblclick", e => {
+            e.preventDefault()
+            if (scale > 1) { scale = 1; tx = ty = 0; apply() }
+            else zoom(2.5, e.clientX, e.clientY)
+        })
+
+        // 触摸：双指捏合缩放（锚定中点）、单指拖动
+        lb.addEventListener("touchstart", e => {
+            if (e.touches.length === 1) {
+                startX = e.touches[0].clientX; startY = e.touches[0].clientY
+            } else if (e.touches.length === 2) {
+                startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY)
+            }
+        }, { passive: true })
+        lb.addEventListener("touchmove", e => {
+            e.preventDefault()
+            if (e.touches.length === 2 && startDist > 0) {
+                const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY)
+                if (d > 0) {
+                    zoom(d / startDist, (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                        (e.touches[0].clientY + e.touches[1].clientY) / 2)
+                    startDist = d
+                }
+            } else if (e.touches.length === 1 && scale > 1) {
+                tx += e.touches[0].clientX - startX
+                ty += e.touches[0].clientY - startY
+                startX = e.touches[0].clientX; startY = e.touches[0].clientY
+                apply()
+            }
+        }, { passive: false })
+        lb.addEventListener("touchend", () => { startDist = 0 })
+    })()
+    </script>
 </body>
 
 </html>

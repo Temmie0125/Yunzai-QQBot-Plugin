@@ -60,12 +60,20 @@ async function mediaCard(seg, kind) {
         kind === "audio" ? "audio/mpeg" : kind === "video" ? "video/mp4" : "application/octet-stream")
     if (!src) return {}
     const label = kind === "audio" ? "语音" : kind === "video" ? "视频" : "文件"
-    const name = escHtml(String(seg.name || nameFromSrc(src) || label))
+    // 显示名：seg.name → URL 提取 → 类型默认名；无后缀时补上推断的后缀（QQ 文件卡片样式）
+    const ext = extOf(seg, null).toLowerCase()
+    let name = String(seg.name || nameFromSrc(src) || "")
+    if (!name)
+        name = ext && ext !== "bin" ? `${label}.${ext}` : label
+    else if (ext && ext !== "bin" && !/\.[a-z0-9]{1,5}$/i.test(name))
+        name += `.${ext}`
+    name = escHtml(name)
+    const badge = ext && ext !== "bin" ? `<span class="file-ext">${escHtml(ext.toUpperCase())}</span>` : ""
     const html = kind === "audio"
         ? `<audio controls preload="none" src="${src}"></audio>`
         : kind === "video"
             ? `<video controls preload="metadata" src="${src}"></video>`
-            : `<div class="file-card">${FILE_ICON_SVG}<span class="file-name">${name}</span></div>`
+            : `<div class="file-card">${FILE_ICON_SVG}<span class="file-name">${name}</span>${badge}</div>`
     return { html, src, name }
 }
 
@@ -340,7 +348,7 @@ export const forwardMethods = {
                         title: "合并转发消息",
                         description: "点击查看",
                         pic_url: data.bot.avatar,
-                        url: 'https://docs.qq.com/scenario/link.html?url=' + link,
+                        url: link?.startsWith("https://") ? link : 'https://docs.qq.com/scenario/link.html?url=' + link,
                     })])
                 if (link) return [{ type: "text", text: `发送了一条合并转发消息\n点击查看：${link}`}]
             } catch (err) {

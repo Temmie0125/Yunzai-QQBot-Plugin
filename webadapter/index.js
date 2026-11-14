@@ -45,7 +45,7 @@ const NUMBER_FIELDS = [
 // inBot: true 表示该字段位于 config.bot 子对象中（如 region）
 const SELECT_FIELDS = [
   { key: "region", label: "腾讯云COS地域", desc: "腾讯云 cos 地域，用于分片内网上传，仅当分片使用内网上传选项开启后生效，可使分片内网上传加快文件发送速度，非腾讯云服务器不用关心此选项（需重启后生效）", default: "ap-guangzhou", inBot: true },
-  { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式：逐条拆发（默认）/ 合并为一条消息，条目间用分割线隔开 / 渲染为图片 / 发送链接（点开网页查看）/ 发送卡片（点击卡片打开网页）。渲染图片或链接失败会自动回退合并发送，再失败回退逐条拆发，保存后实时生效", default: "split", options: ["split", "merge", "image", "url", "card"] },
+  { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式：逐条拆发（默认）/ 合并为一条消息，条目间用分割线隔开 / 渲染为图片 / 发送链接（点开网页查看）/ 发送卡片（点击卡片打开网页）。渲染图片或链接失败会自动回退合并发送，再失败回退逐条拆发，保存后实时生效（url及card模式的链接来自于TRSS-Yunzai自带的http(s)服务器，可以于Yunzai/config/config/server.yaml自行设置）", default: "split", options: ["split", "merge", "image", "url", "card"] },
 ]
 
 // 多值映射字段（按 botQQ 索引），值在页面显示为列表
