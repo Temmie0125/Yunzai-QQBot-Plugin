@@ -120,7 +120,7 @@ export const buildMethods = {
 
     makeButton(data, button) {
         const msg = {
-            id: ulid(),
+            id: button.id || ulid(),
             ...(button.group_id && { group_id: button.group_id }),
             render_data: {
                 label: button.text,
@@ -167,7 +167,30 @@ export const buildMethods = {
                 data: button.link,
                 ...button.QQBot?.action,
             }
-        else return false
+        else if (button.template){
+            let templateIds = []
+            if (typeof button.template === 'boolean' && config.markdown[data.self_id])
+                templateIds = [{
+                    template_id: config.markdown[data.self_id]
+                }]
+            else if (Array.isArray(button.template))
+                templateIds = button.template.map(id => ({ template_id: id }))
+            else if (typeof button.template === 'string')
+                templateIds = [{
+                    template_id: button.template
+                }]
+
+            if (templateIds.length === 0) return false
+
+            msg.action = {
+                type: 4,
+                permission: { type: 2 },
+                subscribe_data: {
+                    template_ids: templateIds
+                },
+                unsupport_tips: "当前客户端不支持订阅",
+            }
+        } else return false
 
         if (button.content || button.confirm_text || button.cancel_text) {
             if (button.confirm_text.length > 4) {
@@ -319,7 +342,7 @@ export const buildMethods = {
                         content += i.data
                     break
                 case "button":
-                    if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
+                    if (config.rawButton[data.self_id] !== false && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
                     break
                 case "buble":
@@ -593,7 +616,7 @@ export const buildMethods = {
                         content += i.data
                     break
                 case "button":
-                    if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
+                    if (config.rawButton[data.self_id] !== false && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
                     break
                 case "buble":
