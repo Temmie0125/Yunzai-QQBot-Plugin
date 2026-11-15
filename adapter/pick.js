@@ -63,7 +63,9 @@ export const pickMethods = {
             ...i,
             getInfo: (force = false) =>{ // 兼容
                 if (!force){
-                    let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
+                    let  data = i.bot.gml.get(group_id)?.get(i.user_id)
+                    if (data && data.nickname) return data
+                    data = i.bot.fl.get(i.group_id)?.get(i.user_id)
                     if (data && data.nickname) return data
                 }
                 return i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
@@ -394,6 +396,7 @@ export const pickMethods = {
             new_avatar: event.sender.avatar,
             unionid: event.sender.union_openid,
             openid: event.sender.user_id,
+            is_friend: true
         }
         Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 
@@ -486,6 +489,7 @@ export const pickMethods = {
         }
 
         data.group_data = group_data || {}
+        data.group_data.in_group = true
         data.group_name = group_data?.group_name || ""
 
         Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
@@ -586,6 +590,7 @@ export const pickMethods = {
             sender: JSON.parse(JSON.stringify(data.sender))
         }
         delete fldata.sender.role
+        delete fldata.sender.card
         await this.setFriendMap(fldata)
     },
 
@@ -672,12 +677,18 @@ export const pickMethods = {
         })
     },
 
-    async delGroupMember(data) {
+    async delGroupMemberMap(data) {
         if (!data.group_id || !data.user_id) return;
 
         const gml = data.bot.gml.get(data.group_id);
         if (!gml) return;
 
         await gml.delete(data.user_id);
+    },
+
+    async delGroupMap(data) {
+        if (!data.group_id) return;
+        await data.bot.gl.delete(data.group_id)
+        await data.bot.gml.delete(data.group_id)
     }
 }

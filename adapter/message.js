@@ -434,9 +434,14 @@ export const messageMethods = {
         }
 
         if (data.notice_type === "friend") {
+            if (data.sub_type === "decrease")
+                data.sender.is_friend = false
+            else
+                data.sender.is_friend = true
             data.reply = msg => this.sendFriendMsg({
                 ...data, user_id: event.user_id,
             }, msg, { event_id: data.event_id })
+            this.setFriendMap(data)
         }
         if (data.notice_type === "group") {
             data.group_id = data.self_id + this.sep + event.group_id
@@ -452,6 +457,11 @@ export const messageMethods = {
 
             data.group_data = group_data || {}
             data.group_name = group_data?.group_name || ""
+            
+            if (data.sub_type === "del")
+                data.group_data.in_group = false
+            else
+                data.group_data.in_group = true
             try{
                 await this.setGroupMap(data)
             }catch(e){
@@ -480,7 +490,7 @@ export const messageMethods = {
             }
             case "decrease": {
                 if (data.notice_type !== "guild") {
-                    this.delGroupMember(data)
+                    this.delGroupMemberMap(data)
                     if (Bot.autoRecordMessage === true) saveNotice(data)
                 }
                 break
@@ -493,6 +503,7 @@ export const messageMethods = {
             case "del":
                 if (data.notice_type !== "guild") {
                     if (Bot.autoRecordMessage === true) saveNotice(data)
+                    //this.delGroupMap(data)
                 }
                 break
             case "update":
