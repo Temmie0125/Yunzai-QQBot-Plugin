@@ -103,7 +103,8 @@
 </head>
 
 <body>
-    <div class="container">{{@ html}}</div>
+    <!-- 灯箱与脚本置于页面最前：脚本在解析大体积正文（内联图片）之前就挂好事件委托，
+         图片边加载边可点击，无需等整页加载完 -->
     <div id="lightbox" hidden>
         <button class="lb-close" title="关闭">✕</button>
         <span class="lb-hint">滚轮/双指缩放 · 拖动查看 · 点空白关闭</span>
@@ -198,6 +199,7 @@
         lb.addEventListener("touchend", () => { startDist = 0 })
     })()
     </script>
+    <div class="container">{{@ html}}</div>
 </body>
 
 </html>

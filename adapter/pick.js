@@ -34,8 +34,21 @@ export const pickMethods = {
             ...i,
             sendMsg: msg => this.sendFriendMsg(i, msg),
             recallMsg: message_id => this.recallFriendMsg(i, message_id),
-            getInfo: () =>{ // 兼容
-                let data = i.bot.fl.get(i.group_id)?.get(i.user_id)
+            getInfo: async (force = false) =>{ // 兼容
+                let data = i.bot.fl.get(id + this.sep + i.user_id)
+                if (!force && data && data.nickname)
+                    return data
+                let friendInfo = await i.bot.sdk.getFriendInfo(i.user_id)
+                data = {
+                    ...data,
+                    nickname: friendInfo.username,
+                    unionid: friendInfo.union_openid,
+                    openid: i.user_id,
+                    new_avatar: friendInfo.avatar,
+                    avatar: `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0?t=${Date.now()}`,
+                    allow_proactive_msg: friendInfo.allow_proactive_msg
+                }
+                i.bot.fl.set(id + this.sep + i.user_id, data)
                 return data
             },
             getAvatarUrl: () => `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0?t=${Date.now()}`,
@@ -61,14 +74,28 @@ export const pickMethods = {
         return {
             ...this.pickFriend(id, user_id),
             ...i,
-            getInfo: (force = false) =>{ // 兼容
-                if (!force){
-                    let  data = i.bot.gml.get(group_id)?.get(i.user_id)
-                    if (data && data.nickname) return data
-                    data = i.bot.fl.get(i.group_id)?.get(i.user_id)
-                    if (data && data.nickname) return data
+            getInfo: async (force = false) =>{ // 兼容
+                let data = i.bot.gml.get(group_id)?.get(id + this.sep + i.user_id)
+                if (!force && data && data.nickname) return data
+                data = {
+                    ...(i.bot.fl.get(i.group_id)?.get(i.user_id)),
+                    ...data
                 }
-                return i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
+                if (!force && data && data.nickname) return data
+                let memberInfo = await i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id)
+                data = {
+                    ...data,
+                    nickname: memberInfo.username,
+                    card: memberInfo.member_nickname || memberInfo.username,
+                    openid: i.user_id,
+                    unionid: memberInfo.union_openid,
+                    new_avatar: memberInfo.avatar,
+                    avatar: `https://q.qlogo.cn/qqapp/${i.bot.info.appid}/${i.user_id}/0?t=${Date.now()}`,
+                    bot: memberInfo.bot,
+                    role: memberInfo.member_role
+                }
+                i.bot.gml.get(group_id)?.set(id + this.sep + i.user_id, data)
+                return data
             },
             getGroupMemberInfo: () => i.bot.sdk.getGroupMemberInfo(i.group_id, i.user_id),
             kickGroupMember: () => i.bot.sdk.kickGroupMembers(i.group_id, [i.user_id]),
@@ -137,10 +164,10 @@ export const pickMethods = {
                 return i.bot.sdk.approvalGroupRequest(i.group_id, i.user_id, "decline", join_request_id, reject_reason, add_to_member_blacklist)
             },
             get is_owner() {
-                return (i.role ?? i.bot.gml.get(group_id)?.get(i.user_id)?.role) === "owner"
+                return (i.role ?? i.bot.gml.get(id + this.sep + i.group_id)?.get(id + this.sep + i.user_id)?.role) === "owner"
             },
             get is_admin() {
-                return (i.role ?? i.bot.gml.get(group_id)?.get(i.user_id)?.role) === "admin" || this.is_owner
+                return (i.role ?? i.bot.gml.get(id + this.sep + i.group_id)?.get(id + this.sep + i.user_id)?.role) === "admin" || this.is_owner
             }
         }
     },
@@ -161,23 +188,28 @@ export const pickMethods = {
             ...i,
             sendMsg: msg => this.sendGroupMsg(i, msg),
             recallMsg: message_id => this.recallGroupMsg(i, message_id),
-            getInfo: (force = false) => {
-                if (!force){
-                    let data = i.bot.gl.get(i.group_id)
-                    if (data && data.group_name) return data
+            getInfo: async (force = false) => {
+                let data = i.bot.gl.get(id + this.sep + i.group_id)
+                if (!force && data && data.group_name) return data
+                let groupInfo = await i.bot.sdk.getGroupInfo(i.group_id)
+                data = {
+                    ...data,
+                    ...groupInfo,
+                    group_unionid: groupInfo.union_group_openid
                 }
-                return i.bot.sdk.getGroupInfo(i.group_id)
+                i.bot.gl.set(id + this.sep + i.group_id, data)
+                return data
             },
             getAvatarUrl: () => `https://q.qlogo.cn/g?b=qq&nk=1&s=100`, // 暂时占位
             pickMember: user_id => this.pickMember(id, group_id, user_id),
-            getMemberMap: () => i.bot.gml.get(group_id),
+            getMemberMap: () => i.bot.gml.get(id + this.sep + i.group_id),
             getGroupMemberList: (cursor = undefined) => i.bot.sdk.getGroupMemberList(i.group_id, cursor),
             getMemberList: (cursor = undefined) => i.bot.sdk.getGroupMemberList(i.group_id, cursor), // 兼容野鸡
             getGroupMemberInfo: user_id => i.bot.sdk.getGroupMemberInfo(i.group_id, user_id),
             getGroupInfo: () => i.bot.sdk.getGroupInfo(i.group_id),
             //getInfo: () => i.bot.sdk.getGroupInfo(i.group_id), // 同步野鸡方法
             getBotStatus: async (force = false) => {
-                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                let bot = i.bot.gml.get(id + this.sep + i.group_id)?.get(i.self_id)
                 if (force || !bot) {
                     let botStatus = await i.bot.sdk.getGroupBotInfo(i.group_id)
                     botStatus = {
@@ -190,8 +222,8 @@ export const pickMethods = {
                         openid: botStatus.member_openid,
                         role: botStatus.member_role,
                     }
-                    i.bot.gml.get(group_id)?.set(i.self_id, botStatus)
-                    i.bot.gml.get(group_id)?.set(`${i.self_id}${this.sep}${botStatus.openid}`, botStatus)
+                    i.bot.gml.get(id + this.sep + i.group_id)?.set(i.self_id, botStatus)
+                    i.bot.gml.get(id + this.sep + i.group_id)?.set(`${i.self_id}${this.sep}${botStatus.openid}`, botStatus)
                     if (!config.bot_openid[i.self_id]){
                         config.bot_openid[i.self_id] = botStatus.openid
                         await configSave()
@@ -312,12 +344,12 @@ export const pickMethods = {
                 return i.bot.sdk.changeGroupMemberBlackList(i.group_id, 'del', member_openids.map(item => item.replace(`${id}${this.sep}`, "")))
             },
             get is_owner() {
-                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                let bot = i.bot.gml.get(id + this.sep + i.group_id)?.get(i.self_id)
                 if (!bot) this.getBotStatus()
                 return bot?.role === "owner"
             },
             get is_admin() {
-                let bot = i.bot.gml.get(group_id)?.get(i.self_id)
+                let bot = i.bot.gml.get(id + this.sep + i.group_id)?.get(i.self_id)
                 if (!bot) this.getBotStatus()
                 return bot?.role === "admin" || this.is_owner
             }
@@ -488,9 +520,13 @@ export const pickMethods = {
             }
         }
 
-        data.group_data = group_data || {}
-        data.group_data.in_group = true
-        data.group_name = group_data?.group_name || ""
+        data.group_data = {
+            ...group_data,
+            in_group: true,
+            group_unionid: event.group_unionid,
+            group_openid: event.group_id
+        }
+        data.group_name = data.group_data.group_name
 
         Bot.makeLog("info", `群消息：[G:${data.group_name}(${data.group_id}), U:${data.nickname}(${data.user_id})] ${data.raw_message}`, data.self_id)
 

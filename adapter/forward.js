@@ -291,7 +291,7 @@ async function buildForwardRows(data, msgList, web = false) {
                         flushRow()
                         rows.push({
                             nickname: escHtml(String(nickname)), avatar,
-                            content: `<a class="img-link" href="${src}" target="_blank" title="点击查看原图"><img class="img" src="${src}" loading="lazy"></a>`,
+                            content: `<a class="img-link" href="${src}" target="_blank" title="点击查看原图"><img class="img" src="${src}" loading="lazy" decoding="async"></a>`,
                             dl: src,
                             dlName: escHtml(String(seg.name || nameFromSrc(src) || "图片.png")),
                         })

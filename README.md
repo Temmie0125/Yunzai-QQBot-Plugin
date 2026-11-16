@@ -307,6 +307,8 @@ Bot.makeMarkdownMsg = async (data, msg) => {
 
 - 引用消息内容获取`e.getReply()`获取当前消息引用的消息（如果开启消息存储，那么可以得到完整的消息内容及结构，不开启也可以得到消息基础内容）
 
+- 用户信息接口`e.friend.getInfo(force)`force类型为Boolean，如果为true则强制通过api刷新并记录进fl，否则从gml中获取，默认不填为false
+
 </details>
 
 <details><summary>支持QQBot api自由切换</summary>
