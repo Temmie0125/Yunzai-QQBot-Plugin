@@ -23,7 +23,7 @@ export const { config, configSave } = await makeConfig("QQBot", {
     // 使用统计总开关：默认关闭，关闭时不记录数据、不注册展示页
     stat: false,
     recordSendErrors: true,
-    // 合并转发消息发送方式：split=逐条拆发（默认） / merge=合并为一条消息，条目间用分割线隔开 / image=渲染为一张图片发送
+    // 合并转发消息发送方式：split=逐条拆发（默认） / merge=合并为一条消息，条目间用分割线隔开 / image=渲染为一张图片发送 / url=发送伪造合并信息页面链接 / card=发送伪造合并信息卡片
     forwardMethod: "split",
     rawButton: {},
     markdown: {},
@@ -45,7 +45,7 @@ export const { config, configSave } = await makeConfig("QQBot", {
         "参考：https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin",
         "bot中的newapi为新版api，internal为分片内网上传开关，region为腾讯云cos地域，concurrency为分片上传并发数量，sandbox为沙箱环境，maxRetry为最大重试次数，timeout为超时时间",
         "如果一直提示put超时可将concurrency调低，最低1，如果是腾讯云服务器可以将internal设置为true，并将region设置为服务器所在地域对应cos的region，然后将concurrency设置为20",
-        "forwardMethod中split为逐条拆发，merge为合并为一条消息，条目间用分割线隔开，image为渲染为一张图片发送,自行选择发送方式"
+        "forwardMethod中split为逐条拆发，merge为合并为一条消息，条目间用分割线隔开，image为渲染为一张图片发送，自行选择发送方式，url=发送伪造合并信息页面链接，card=发送伪造合并信息卡片"
     ],
 })
 

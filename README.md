@@ -350,6 +350,8 @@ segment.card({
 })
 ```
 
+- 用户信息接口`e.friend.getInfo(force)`force类型为Boolean，如果为true则强制通过api刷新并记录进fl，否则从gml中获取，默认不填为false
+
 </details>
 
 <details><summary>支持QQBot api自由切换</summary>
@@ -407,6 +409,35 @@ segment.buble()
 - segment.ark(template_id, data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
 
 - segment.ark23(data)、segment.ark24(data)、segment.ark37(data) 发送ark模板消息，写法参考[ark写法参考.md](https://gitee.com/wind-trace-typ/Yunzai-QQBot-Plugin/blob/main/ark写法参考.md)
+
+- segment.action_button(data), 用于构造附带消息反馈的消息（必须附带非空的消息）。data有以下几个参数
+  - callback_data: String 回调信息
+  - feedback: Boolean 是否显示点赞或点踩
+  - tts: Boolean tts语音播放按钮
+  - re_generate: Boolean 是否显示刷新消息按钮
+  - stop_generate: Boolean 停止生成按钮
+
+- segment.stream(data), 用于发送流式消息，data有以下几个参数
+  - chunkSize: Number 分片数量，默认2
+  - delay: Number 分片延迟，默认100
+
+</details>
+
+<details><summary>报错统计</summary>
+
+- 借助webadapter可以查看最近报错统计以及报错类型统计，前提需到Yunzai/config/QQBot.yaml中将`recordSendErrors`设置为`true`(可在webadapter中设置)，默认为false不记录。
+
+- 最近报错可展示最近报错的详细信息、内容、时间等，报错类型统计可展示报错类型触发次数排序
+
+- 此统计仅统计sendMsg过程中从开放平台api返回的报错，其他如插件报错、消息解析报错等不统计
+
+- 发送`#最近报错`和`#报错排行`可分别查看最近报错和报错类型排行
+
+</details>
+
+<details><summary>合并转发发送方式控制</summary>
+
+- 合并转发消息可以选择三种发送方式`split=逐条拆发（默认）`、`merge=合并为一条消息，条目间用分割线隔开`、`image=渲染为一张图片发送`、`url=伪造合并转发页面并发送链接`、`card=伪造合并转发页面并发送跳转卡片`,可到Yunzai/config/QQBot.yaml中将`recordSendErrors`转为对应的值即可(可在webadapter中快捷设置),想要使用url和card模式需要确保自己服务器足够安全（url来自于TRSS-Yunzai自带的http(s)服务器，可以于Yunzai/config/config/server.yaml自行设置）
 
 </details>
 

@@ -2,6 +2,7 @@
 import { createRequire } from "module"
 import { config, pkg } from "./context.js"
 import { buildMethods } from "./build.js"
+import { forwardMethods } from "./forward.js"
 import { sendMethods } from "./send.js"
 import { pickMethods } from "./pick.js"
 import { messageMethods } from "./message.js"
@@ -33,6 +34,7 @@ class QQBotAdapter {
 Object.assign(
     QQBotAdapter.prototype,
     buildMethods,
+    forwardMethods,
     sendMethods,
     pickMethods,
     messageMethods,

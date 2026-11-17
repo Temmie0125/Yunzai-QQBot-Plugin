@@ -3,6 +3,7 @@ import crypto from "node:crypto"
 import express from "express"
 import QRCode from "qrcode"
 import { config, configSave } from "./context.js"
+import { registerForwardRoute } from "./forward.js"
 import { Bot as QQBot } from "@windtrace/qq-group-bot"
 import { QR_URL_TPL, _qrCreateBindTask, _qrPollBindResult, _qrDecryptSecret, _qrGetRobotUin } from "./qr.js"
 
@@ -327,6 +328,9 @@ export const connectMethods = {
             this.makeWebHook.bind(this)
         )
         Bot.express.quiet.push(`/${this.name}`)
+        // 合并转发查看路由（含 skip_auth 白名单）：适配器加载即注册，
+        // 不依赖首次 url 转发触发，避免重启后访问链接被 serverAuth 302
+        registerForwardRoute()
         for (const bot of config.token)
             await Bot.sleep(5000, this.connect(bot))
 

@@ -1,32 +1,11 @@
-// 消息构造方法：按钮 / Markdown / 卡片 / 图片等
 import { ulid } from "ulid"
 import QRCode from "qrcode"
 import imageSize from "image-size"
 import { encode as encodeSilk, isSilk } from "silk-wasm"
 import fs from "node:fs/promises"
-import fsSync from "node:fs"
 import path, { sep } from "node:path"
-import puppeteer from "../../../lib/puppeteer/puppeteer.js"
 import { config, sharp } from "./context.js"
 import { compressImage } from "../lib/media.js"
-
-const escHtml = s =>
-    String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
-
-async function segImgSrc(file) {
-    try {
-        if (Buffer.isBuffer(file))
-            return `data:image/png;base64,${file.toString("base64")}`
-        const s = String(file ?? "")
-        if (/^https?:\/\//.test(s) || s.startsWith("data:"))
-            return s
-        if (s.startsWith("base64://"))
-            return `data:image/png;base64,${s.slice(9)}`
-        if (s && fsSync.existsSync(s))
-            return "file:///" + s.replace(/\\/g, "/")
-    } catch { }
-    return ""
-}
 
 export const buildMethods = {
     isMp3(buf) {
@@ -149,7 +128,7 @@ export const buildMethods = {
 
     makeButton(data, button) {
         const msg = {
-            id: ulid(),
+            id: button.id || ulid(),
             ...(button.group_id && { group_id: button.group_id }),
             render_data: {
                 label: button.text,
@@ -196,7 +175,30 @@ export const buildMethods = {
                 data: button.link,
                 ...button.QQBot?.action,
             }
-        else return false
+        else if (button.template){
+            let templateIds = []
+            if (typeof button.template === 'boolean' && config.markdown[data.self_id])
+                templateIds = [{
+                    template_id: config.markdown[data.self_id]
+                }]
+            else if (Array.isArray(button.template))
+                templateIds = button.template.map(id => ({ template_id: id }))
+            else if (typeof button.template === 'string')
+                templateIds = [{
+                    template_id: button.template
+                }]
+
+            if (templateIds.length === 0) return false
+
+            msg.action = {
+                type: 4,
+                permission: { type: 2 },
+                subscribe_data: {
+                    template_ids: templateIds
+                },
+                unsupport_tips: "当前客户端不支持订阅",
+            }
+        } else return false
 
         if (button.content || button.confirm_text || button.cancel_text) {
             if (button.confirm_text.length > 4) {
@@ -353,7 +355,7 @@ export const buildMethods = {
                         content += i.data
                     break
                 case "button":
-                    if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
+                    if (config.rawButton[data.self_id] !== false && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
                     break
                 case "buble":
@@ -396,10 +398,10 @@ export const buildMethods = {
                         throw new Error('description、pic_url、title、url均为必填值')
                     }
                     if (!url?.startsWith('https://')) {
-                        throw new Error('url必须使用https协议')
+                        throw new Error('card url必须使用https协议')
                     }
                     if (!(pic_url.startsWith('https://') || pic_url.startsWith('http://'))){
-                        throw new Error('pic_url无效')
+                        throw new Error('card pic_url无效')
                     }
                     /*if (url.length > 1024) {
                         throw new Error('url超出1024长度限制')
@@ -632,7 +634,7 @@ export const buildMethods = {
                         content += i.data
                     break
                 case "button":
-                    if (config.rawButton[data.self_id] !== "false" && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
+                    if (config.rawButton[data.self_id] !== false && data.platform.startsWith("QQ")) button.push(...this.makeButtons(data, i.data))
                     else content += await this.btntocmd(i)
                     break
                 case "buble":
@@ -760,145 +762,6 @@ export const buildMethods = {
         if (reply) for (const i of messages)
             i.unshift(reply)
         return messages
-    },
-
-    async makeForwardMsg(data, msgList, builder = "makeRawMarkdownMsg") {
-        const method = config.forwardMethod
-        if (method === "image") {
-            try {
-                const img = await this.forwardToImage(data, msgList, builder)
-                if (img) return img
-            } catch (err) {
-                logger.warn(`[QQBot] 合并转发渲染图片失败，回退为合并发送: ${err.message}`)
-            }
-        }
-        if (method === "image" || method === "merge") {
-            try {
-                const merged = await this.forwardToMerge(data, msgList, builder)
-                if (merged) return merged
-            } catch (err) {
-                logger.warn(`[QQBot] 合并转发合并失败，回退为逐条发送: ${err.message}`)
-            }
-        }
-        const messages = []
-        for (const { message } of msgList)
-            messages.push(...(await this[builder](data, message)))
-    
-        return messages
-    },
-
-    async forwardToMerge(data, msgList, builder) {
-        const separator = { type: "text", text: "\n***\n" }
-        const result = []
-        for (const item of msgList) {
-            const msg = item?.message
-            const parts = Array.isArray(msg) ? msg.flat(Infinity) : (msg == null ? [] : [msg])
-            if (!parts.length) continue
-            result.push(...parts, separator)
-        }
-        if (result.length) result.pop()
-        const message = await this[builder](data, result)
-        return message.length ? message : null
-    },
-
-    async forwardToImage(data, msgList, builder) {
-        const rows = [], buttons = [], files = []
-        const MAX_NODE_DEPTH = 5
-
-        const buildRows = async (list, depth = 0) => {
-            if (depth > MAX_NODE_DEPTH) {
-                logger.warn(`[QQBot] 合并转发嵌套超过 ${MAX_NODE_DEPTH} 层，已截断`)
-                return
-            }
-            for (const item of list || []) {
-                const message = item?.message
-                if (!message) continue
-                const nickname = item.nickname || item.user_id || data.bot?.nickname || ""
-                let avatar = item.avatar
-                    || (typeof item.user_id === "number" ? `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=640` : "")
-                    || data.pickFriend?.(item.user_id)?.avatar
-                    || data.bot?.avatar
-                    || ""
-                avatar = escHtml(String(await segImgSrc(avatar)))
-                const parts = []
-                const flushRow = () => {
-                    const content = parts.filter(Boolean).join("")
-                    parts.length = 0
-                    if (content.trim())
-                        rows.push({ nickname: escHtml(String(nickname)), avatar, content })
-                }
-                for (const seg of Array.isArray(message) ? message : [message]) {
-                    if (!seg) continue
-                    switch (seg.type) {
-                        case "text":
-                            parts.push(escHtml(seg.text))
-                            break
-                        case "at":
-                            let atUser = data.bot.fl.get(seg.qq || seg.user_id)
-                            parts.push(`<span class="at">@${escHtml(String(atUser?.nickname || seg.qq || seg.user_id || ""))}</span>`)
-                            break
-                        case "face":
-                            parts.push("[表情]")
-                            break
-                        case "image": {
-                            const src = await segImgSrc(seg.file)
-                            parts.push(src ? `<img class="img" src="${src}">` : "[图片]")
-                            break
-                        }
-                        case "record":
-                        case "audio":
-                            files.push(seg)
-                            parts.push(`[语音附件${files.length}]见后续消息`)
-                            break
-                        case "video":
-                            files.push(seg)
-                            parts.push(`[视频附件${files.length}]见后续消息`)
-                            break
-                        case "file":
-                            files.push(seg)
-                            parts.push(`[文件附件${files.length}]见后续消息`)
-                            break
-                        case "markdown":
-                            parts.push(escHtml(Bot.String(seg.content)))
-                            break
-                        case "button":
-                            buttons.push(seg)
-                            break
-                        case "node": {
-                            flushRow()
-                            await buildRows(seg.data, depth + 1)
-                            break
-                        }
-                        default:
-                            parts.push(escHtml(Bot.String(seg.text ?? seg)))
-                    }
-                }
-                flushRow()
-            }
-        }
-
-        await buildRows(msgList)
-        if (!rows.length) return null
-
-        const html = rows.map(r => `
-            <div class="msg">
-                ${r.avatar ? `<img class="avatar" src="${r.avatar}">` : ""}
-                <div class="body">
-                    <div class="nickname">${r.nickname}</div>
-                    <div class="bubble">${r.content}</div>
-                </div>
-            </div>`).join("")
-
-        const tplFile = path.join(process.cwd(), "plugins", "QQBot-Plugin", "resources", "html", "forward.html")
-        const seg = await puppeteer.screenshot("QQBot-Plugin", {
-            tplFile,
-            html,
-            saveId: `qqbot_forward_${Date.now()}`,
-        })
-        if (!seg) return null
-        
-        const file = seg.file ?? seg
-        return await this[builder](data, [{ type: "image", file }, ...files, ...buttons])
     },
 
     async makeMsg(data, msg) {

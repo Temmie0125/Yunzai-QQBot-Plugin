@@ -446,9 +446,11 @@
             { value: "split", label: "逐条拆发" },
             { value: "merge", label: "合并一条消息（分割线隔开）" },
             { value: "image", label: "渲染为图片" },
+            { value: "url", label: "发送链接（点开网页查看）" },
+            { value: "card", label: "发送卡片（点击卡片打开网页）" },
         ]
         const SELECT_META = [
-            { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式。逐条拆发为原有行为；渲染为图片失败会自动回退合并发送，再失败回退逐条拆发（保存后实时生效）", options: FORWARD_METHOD_OPTIONS },
+            { key: "forwardMethod", label: "合并转发发送方式", desc: "合并转发消息的发送方式。逐条拆发为原有行为；渲染为图片或链接失败会自动回退合并发送，再失败回退逐条拆发（url及card模式的链接来自于TRSS-Yunzai自带的http(s)服务器，可以于Yunzai/config/config/server.yaml自行设置）（保存后实时生效）", options: FORWARD_METHOD_OPTIONS },
         ]
 
         function avatarUrl(qq) { return `http://q1.qlogo.cn/g?b=qq&nk=${qq}&s=640` }

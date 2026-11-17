@@ -461,9 +461,14 @@ export const messageMethods = {
         }
 
         if (data.notice_type === "friend") {
+            if (data.sub_type === "decrease")
+                data.sender.is_friend = false
+            else
+                data.sender.is_friend = true
             data.reply = msg => this.sendFriendMsg({
                 ...data, user_id: event.user_id,
             }, msg, { event_id: data.event_id })
+            this.setFriendMap(data)
         }
         if (data.notice_type === "group") {
             data.group_id = data.self_id + this.sep + event.group_id
@@ -479,6 +484,11 @@ export const messageMethods = {
 
             data.group_data = group_data || {}
             data.group_name = group_data?.group_name || ""
+            
+            if (data.sub_type === "del")
+                data.group_data.in_group = false
+            else
+                data.group_data.in_group = true
             try{
                 await this.setGroupMap(data)
             }catch(e){
@@ -511,15 +521,15 @@ export const messageMethods = {
                 break
             }
             case "decrease": {
-                if (data.notice_type === "friend") {
-                    // 好友删除事件(FRIEND_DEL)：从好友表移除
-                    await data.bot.fl.delete(data.user_id)
-                    if (Bot.autoRecordMessage === true) saveNotice(data)
-                } else if (data.notice_type !== "guild") {
-                    // 成员退群：资料先转入users缓存保留（gml即将删除该成员），
-                    // yenai退群提示等仍能取到昵称头像
-                    await this.setUserMap(data)
-                    this.delGroupMember(data)
+                if (data.notice_type !== "guild") {
+                    if (data.notice_type !== "friend") {
+                        // 成员退群：资料先转入users缓存保留（gml即将删除该成员），
+                        // yenai退群提示等仍能取到昵称头像
+                        await this.setUserMap(data)
+                    }
+                    // 好友删除不再移除好友表：上游makeNotice已对好友通知统一setFriendMap
+                    // 并标记is_friend=false，保留资料仅改标记
+                    this.delGroupMemberMap(data)
                     if (Bot.autoRecordMessage === true) saveNotice(data)
                 }
                 break
