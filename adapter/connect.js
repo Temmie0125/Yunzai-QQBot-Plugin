@@ -83,8 +83,10 @@ export const connectMethods = {
             info: {
                 id, ...opts,
                 // bot自身头像按 avatarCacheMinutes 分桶：官方CDN缓存30天，静态URL会让
-                // 渲染浏览器（含长效的shotium守护进程）长期显示旧头像
+                // 渲染浏览器（含长效的shotium守护进程）长期显示旧头像。
+                // setter吸收sdk.getSelfInfo()的Object.assign回写，读取始终走分桶URL
                 get avatar() { return `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}&t=${avatarCacheKey()}` },
+                set avatar(v) {},
             },
             get nickname() { return this.info.username },
             get avatar() { return this.info.avatar },
