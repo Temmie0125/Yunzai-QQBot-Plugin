@@ -1,5 +1,5 @@
 // pick 方法 / 构造消息对象 / 群管方法
-import { config, configSave, blacklist } from "./context.js"
+import { config, configSave, blacklist, avatarCacheKey } from "./context.js"
 import { getMessageIdByMsgIdx, getMessageByMsgIdx } from "../lib/message.js"
 
 // Bot 在各群的角色缓存（官方bot_state接口），key: `${self_id}:${group_openid}`
@@ -47,22 +47,24 @@ export const pickMethods = {
 
     // 标准化用户头像获取：官方Bot平台用户只有OpenID（32位十六进制），没有QQ号，
     // 需走 qqapp 头像接口 https://q.qlogo.cn/qqapp/{appid}/{openid}/{size}（size 支持 0/100/640，0 为原图）。
-    // 真实QQ号（非OpenID格式）回退标准 qlogo 接口。user_id 支持裸ID或 "self_id:ID" 复合格式
+    // 真实QQ号（非OpenID格式）回退标准 qlogo 接口。user_id 支持裸ID或 "self_id:ID" 复合格式。
+    // URL按 avatarCacheMinutes 分桶追加t参数：官方CDN对头像下发 max-age=30天，
+    // 渲染插件的浏览器HTTP缓存会让换头像后持续显示旧图（schedule生日列表曾复现）
     getAvatarUrl(self_id, user_id, size = 100) {
         user_id = String(user_id ?? "")
         const id = self_id ? user_id.replace(`${self_id}${this.sep}`, "") : user_id
+        const t = `t=${avatarCacheKey()}`
         if (/^[0-9A-F]{32}$/i.test(id)) {
             const appid = Bot[self_id]?.info?.appid
-            if (appid) return `https://q.qlogo.cn/qqapp/${appid}/${id}/${size}`
+            if (appid) return `https://q.qlogo.cn/qqapp/${appid}/${id}/${size}?${t}`
         }
-        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}`
+        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}&${t}`
     },
 
-    // 头像地址加t时间戳参数：避开QQ CDN缓存拿最新头像（上游bcf8b53行为，
-    // 叠加在标准化地址上，仅用于pick实例的实时取用，Bot.getAvatarUrl保持稳定URL便于缓存）
+    // 强实时头像：在分桶URL之上再追加每次调用都变化的rt参数，完全绕过本地与CDN缓存。
+    // 仅用于pick实例的实时取用（getInfo等），Bot.getAvatarUrl保持分桶稳定以便同桶内复用缓存
     getAvatarUrlFresh(self_id, user_id, size = 100) {
-        const url = this.getAvatarUrl(self_id, user_id, size)
-        return url + (url.includes("?") ? "&" : "?") + `t=${Date.now()}`
+        return this.getAvatarUrl(self_id, user_id, size) + `&rt=${Date.now()}`
     },
 
     // 查询Bot在群内的角色（owner/admin/member），供外部（如群消息事件）预热缓存

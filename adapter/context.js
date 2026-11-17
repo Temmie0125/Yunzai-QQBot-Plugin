@@ -25,6 +25,10 @@ export const { config, configSave } = await makeConfig("QQBot", {
     recordSendErrors: true,
     // 合并转发消息发送方式：split=逐条拆发（默认） / merge=合并为一条消息，条目间用分割线隔开 / image=渲染为一张图片发送 / url=发送伪造合并信息页面链接 / card=发送伪造合并信息卡片
     forwardMethod: "split",
+    // 头像缓存有效期（分钟）：官方头像CDN下发 cache-control: max-age=30天，渲染插件（schedule生日列表、
+    // 群课表等）的浏览器HTTP缓存会让换头像后最长一个月显示旧图。适配器在构造的头像URL上按此分钟数
+    // 分桶追加t参数强制回源，默认60分钟；<=0 表示每次调用都变化（完全绕过缓存）。仅影响适配器构造的头像URL，不影响事件直链
+    avatarCacheMinutes: 60,
     rawButton: {},
     markdown: {},
     template: {},
@@ -82,6 +86,15 @@ export const { config, configSave } = await makeConfig("QQBot", {
         dirty = true
     }
     if (dirty) await configSave()
+}
+
+// 头像URL缓存分桶键：同桶内URL稳定（渲染浏览器HTTP缓存仍可复用），跨桶URL变化（强制回源取新头像）。
+// 供适配器各处构造头像URL时统一追加为 t 参数，把官方CDN下发的30天有效期压到 avatarCacheMinutes
+export function avatarCacheKey() {
+    let minutes = Number(config.avatarCacheMinutes)
+    if (!Number.isFinite(minutes)) minutes = 60 // 未配置：默认1小时
+    if (minutes <= 0) return Date.now() // <=0：每次调用都变，完全绕过缓存
+    return Math.floor(Date.now() / (minutes * 60000))
 }
 
 // 字段黑名单：过滤事件 ext 中的危险字段（与用户/群黑名单无关）

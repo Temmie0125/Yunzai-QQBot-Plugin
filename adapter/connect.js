@@ -2,7 +2,7 @@
 import crypto from "node:crypto"
 import express from "express"
 import QRCode from "qrcode"
-import { config, configSave } from "./context.js"
+import { config, configSave, avatarCacheKey } from "./context.js"
 import { registerForwardRoute } from "./forward.js"
 import { Bot as QQBot } from "@windtrace/qq-group-bot"
 import { QR_URL_TPL, _qrCreateBindTask, _qrPollBindResult, _qrDecryptSecret, _qrGetRobotUin } from "./qr.js"
@@ -82,7 +82,9 @@ export const connectMethods = {
             uin: id,
             info: {
                 id, ...opts,
-                avatar: `https://q.qlogo.cn/g?b=qq&s=0&nk=${this.uin}`,
+                // bot自身头像按 avatarCacheMinutes 分桶：官方CDN缓存30天，静态URL会让
+                // 渲染浏览器（含长效的shotium守护进程）长期显示旧头像
+                get avatar() { return `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}&t=${avatarCacheKey()}` },
             },
             get nickname() { return this.info.username },
             get avatar() { return this.info.avatar },

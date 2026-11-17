@@ -2,7 +2,7 @@
 // 触发：
 //   #QQBot统计     近七天汇总（可加天数：#QQBot统计 30天；可指定截止日：#QQBot统计 2026-08-15）
 //   #QQBot月统计   本月汇总（可指定月份：#QQBot月统计 2026-08）
-import { config } from "../adapter/context.js"
+import { config, avatarCacheKey } from "../adapter/context.js"
 import { getSummary, dateStr, isStatBot } from "../lib/stat.js"
 import { getSendErrors, getSendErrorTypes } from "../lib/errorStore.js"
 import puppeteer from "../../../lib/puppeteer/puppeteer.js"
@@ -275,7 +275,7 @@ function fmtTs(ts) {
 function botAvatarOf(id) {
     const info = Bot[id]?.info || {}
     return String(info.avatar || "").replace(/^http:\/\//, "https://")
-        || `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}`
+        || `https://q.qlogo.cn/g?b=qq&s=0&nk=${id}&t=${avatarCacheKey()}`
 }
 
 const CMD_LOCK = new Map()

@@ -1,5 +1,5 @@
 // 发送 / 撤回消息方法
-import { config } from "./context.js"
+import { config, avatarCacheKey } from "./context.js"
 import { saveSentMessage } from "../lib/message.js"
 import { recordSendErrors } from "../lib/errorStore.js"
 
@@ -118,7 +118,7 @@ export const sendMethods = {
                         ...data.sender,
                         user_id,
                         nickname: data.sender?.nickname || data.nickname || "",
-                        avatar: data.sender?.avatar || data.avatar || `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${openid}/0`,
+                        avatar: data.sender?.avatar || data.avatar || `https://q.qlogo.cn/qqapp/${data.bot.info.appid}/${openid}/0?t=${avatarCacheKey()}`,
                         openid: data.sender?.openid || data.openid || openid,
                     },
                 }).catch(() => {})

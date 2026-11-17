@@ -1,5 +1,5 @@
 // 事件解析 / 通知方法：将原始事件转为 Yunzai e 对象
-import { config, blacklist } from "./context.js"
+import { config, blacklist, avatarCacheKey } from "./context.js"
 import { isGroupBlacklisted, isUserBlacklisted } from "../lib/blacklist.js"
 import { saveMessage } from "../lib/message.js"
 import { saveNotice } from "../lib/notice.js"
@@ -123,7 +123,7 @@ export const messageMethods = {
                 sender: {
                     user_id: `${id}${this.sep}${event.user_id}`,
                     bot: event.author?.bot || user?.bot || false,
-                    avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id}/0`,
+                    avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id}/0?t=${avatarCacheKey()}`,
                     unionid: event.union_openid || user?.unionid || "",
                     openid: event.user_id || user?.openid || "",
                     nickname: event.user_name || user?.nickname || ""
@@ -431,7 +431,7 @@ export const messageMethods = {
         let user = await Bot[id].fl.get(uid) ?? await Bot[id].users?.get(uid)
         let data = {
             openid: event.user_id ? event.user_id : event.operator_id,
-            avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id ? event.user_id : event.operator_id}/0`,
+            avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.user_id ? event.user_id : event.operator_id}/0?t=${avatarCacheKey()}`,
             event_id: event.event_id,
             raw: event,
             raw_event: event.raw,
@@ -447,7 +447,7 @@ export const messageMethods = {
             sender: {
                 user_id: `${id}${this.sep}${event.operator_id || event.user_id}`,
                 bot: event.author?.bot || user?.bot || false,
-                avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.operator_id || event.user_id}/0` || user.avatar || "",
+                avatar: `https://q.qlogo.cn/qqapp/${Bot[id].info.appid}/${event.operator_id || event.user_id}/0?t=${avatarCacheKey()}` || user.avatar || "",
                 unionid: event.union_openid || user?.unionid || "",
                 openid: event.operator_id || event.user_id || user?.openid || "",
                 nickname: event.user_name || user?.nickname || ""

@@ -1,6 +1,6 @@
 // QQBot 适配器主类：组合各方法模块，导出单例 adapter
 import { createRequire } from "module"
-import { config, pkg } from "./context.js"
+import { config, pkg, avatarCacheKey } from "./context.js"
 import { buildMethods } from "./build.js"
 import { forwardMethods } from "./forward.js"
 import { sendMethods } from "./send.js"
@@ -51,6 +51,6 @@ if (typeof Bot.getAvatarUrl !== "function") {
             return adapter.getAvatarUrl(self_id, user_id, size)
         user_id = String(user_id ?? "")
         const id = self_id ? user_id.replace(`${self_id}:`, "") : user_id
-        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}`
+        return `https://q1.qlogo.cn/g?b=qq&nk=${id}&s=${size}&t=${avatarCacheKey()}`
     }
 }

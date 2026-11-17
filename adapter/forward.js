@@ -4,7 +4,7 @@ import crypto from "node:crypto"
 import imageSize from "image-size"
 import path from "node:path"
 import puppeteer from "../../../lib/puppeteer/puppeteer.js"
-import { config } from "./context.js"
+import { config, avatarCacheKey } from "./context.js"
 import { fileURLToPath } from "node:url"
 
 const escHtml = s =>
@@ -259,7 +259,7 @@ async function buildForwardRows(data, msgList, web = false) {
             if (!message) continue
             const nickname = item.nickname || item.user_id || data.bot?.nickname || ""
             let avatar = item.avatar
-                || (typeof item.user_id === "number" ? `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=640` : "")
+                || (typeof item.user_id === "number" ? `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=640&t=${avatarCacheKey()}` : "")
                 || data.pickFriend?.(item.user_id)?.avatar
                 || data.bot?.avatar
                 || ""
