@@ -140,21 +140,32 @@ export const messageMethods = {
             }
 
             // 官Bot回调事件不带user_name：非好友点击时sender.nickname为空，插件侧只能显示复合ID。
-            // 从gml/用户资料缓存回填，仍无则拉群成员API一次并回写users缓存
+            // 从本群gml/用户资料缓存回填，仍无则拉本群群成员API一次并回写
             //（下方的setGroupMap/setUserMap会把带昵称的sender落进gml与users，后续点击免API）
             if (data.sender && !data.sender.nickname) {
                 const uid = `${id}${this.sep}${event.user_id}`
                 const cached = await data.bot.users?.get(uid)
-                data.sender.nickname = user?.nickname || user?.card || cached?.nickname || cached?.card || ""
+                // users是user级缓存（无群维度）：nickname是全局原始昵称可跨群兜底，
+                // card是各群的群名片，跨群回填会把A群名片泄漏进B群，绝不读cached.card
+                data.sender.nickname = user?.nickname || user?.card || cached?.nickname || ""
                 if (!data.sender.nickname) {
                     try {
                         const info = await data.bot.sdk.getGroupMemberInfo(event.group_id, event.user_id)
                         if (info?.nickname) {
                             data.sender.nickname = info.nickname
+                            // user级缓存只存全局昵称；群名片属于群维度，只落本群gml供本群后续回填
                             await data.bot.users?.set(uid, {
-                                ...cached, nickname: info.nickname,
-                                card: info.card || info.nickname, user_id: uid,
+                                ...cached, nickname: info.nickname, user_id: uid,
                             })
+                            const gml = data.bot.gml.get(data.group_id)
+                            if (gml) {
+                                const memberKey = `${id}${this.sep}${event.user_id}`
+                                await gml.set(memberKey, {
+                                    ...gml.get(memberKey),
+                                    nickname: info.nickname,
+                                    card: info.card || info.nickname,
+                                })
+                            }
                         }
                     } catch (e) {
                         Bot.makeLog("debug", ["按钮回调获取群成员昵称失败", e], id)

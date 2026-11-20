@@ -957,6 +957,10 @@ export const pickMethods = {
         // 空值不覆盖旧资料：退群等事件的快照可能缺昵称，直接合并会把缓存里已有的昵称/unionid清空
         const add = { ...data.sender, user_id: data.user_id }
         for (const k in add) if (add[k] === undefined || add[k] === "") delete add[k]
+        // card是群/频道维度的名片，users按user聚合没有群维度；
+        // 落盘后会被其他群的回填读到别的群名片（跨群泄漏），这里不缓存
+        // （显式置undefined：合并旧条目时顺带清掉历史版本已写入的card，JSON序列化会丢弃undefined）
+        add.card = undefined
         await data.bot.users?.set(data.user_id, {
             ...data.bot.users?.get(data.user_id),
             ...add,
