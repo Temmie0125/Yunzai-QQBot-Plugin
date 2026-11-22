@@ -881,6 +881,8 @@ export const pickMethods = {
         // 写入fl会让yenai/状态面板把所有@过机器人的成员都算成好友（好友数虚高），
         // 这里只更新用户资料缓存users（退群后gml被删，仍可查昵称头像）
         await this.setUserMap({ bot: data.bot, user_id: data.user_id, sender: data.sender })
+        // 缓存mentions里被@用户的资料（从未发言用户少有的提前认识其人的机会）
+        await this.setMentionMap(data)
     },
 
     async makeDirectMessage(data, event) {
@@ -965,6 +967,35 @@ export const pickMethods = {
             ...data.bot.users?.get(data.user_id),
             ...add,
         })
+    },
+
+    // 缓存mentions中被@用户的资料：群聊事件通常只有发送者带昵称，mentions偶尔附带其他
+    // 用户的username(昵称)/member_nickname(群名片)，是从未发言用户少有的可提前获知昵称
+    // 的渠道（Koishi适配器同款思路），供退群提示等插件兜底
+    async setMentionMap(data) {
+        if (!data.mentions?.length) return
+        const gml = data.bot.gml.get(data.group_id)
+        for (const m of data.mentions) {
+            // 全体成员/机器人（含Bot自己被@）没有可缓存的个体资料；缺昵称也没有缓存价值
+            if (!m.id || m.scope === "all" || m.bot || m.is_you) continue
+            if (!m.username && !m.member_nickname) continue
+            const uid = `${data.self_id}${this.sep}${m.id}`
+            // 群名片属于群维度，只落本群gml；users按user聚合只存全局昵称，
+            // 避免跨群回填把A群名片泄漏进B群（同setUserMap注释）
+            if (gml) {
+                const member = { ...gml.get(uid), user_id: uid }
+                if (m.username) member.nickname = m.username
+                if (m.member_nickname || m.username) member.card = m.member_nickname || m.username
+                if (m.member_role) member.role = m.member_role
+                await gml.set(uid, member)
+            }
+            if (m.username)
+                await this.setUserMap({
+                    bot: data.bot,
+                    user_id: uid,
+                    sender: { user_id: uid, nickname: m.username },
+                })
+        }
     },
 
     async setGroupMap(data) {
