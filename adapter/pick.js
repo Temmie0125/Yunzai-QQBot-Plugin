@@ -683,11 +683,8 @@ export const pickMethods = {
 
         Bot.makeLog("info", `好友消息：[U:${data.nickname}(${data.user_id})] ${this.quoteLogPrefix(data)}${data.raw_message}`, data.self_id)
 
-        ;(data.bot._passiveAnchor ||= {})[`user:${event.sender.user_id}`] = {
-            id: data.message_id,
-            event_id: data.event_id,
-            time: Date.now(),
-        }
+        // 记录被动回复锚点入事件池：sendFile/pickFriend 等不经过事件对象的发送通道由 fixPassiveSource 回退选取
+        this.recordPassiveAnchor(data, "user", event.sender.user_id)
 
         data.reply = msg => this.sendFriendMsg({
             ...data, user_id: event.sender.user_id,
@@ -829,12 +826,8 @@ export const pickMethods = {
 
         data.platform = "QQ-group"
 
-        // 记录被动回复锚点：sendFile 等不经过事件对象的发送通道由 fixPassiveSource 回退使用
-        ;(data.bot._passiveAnchor ||= {})[`group:${event.group_id}`] = {
-            id: data.message_id,
-            event_id: data.event_id,
-            time: Date.now(),
-        }
+        // 记录被动回复锚点入事件池：sendFile/pickGroup 等不经过事件对象的发送通道由 fixPassiveSource 回退选取
+        this.recordPassiveAnchor(data, "group", event.group_id)
 
         data.reply = msg => this.sendGroupMsg({
             ...data, group_id: event.group_id,

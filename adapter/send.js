@@ -3,16 +3,75 @@ import { config, avatarCacheKey } from "./context.js"
 import { saveSentMessage } from "../lib/message.js"
 import { recordSendErrors } from "../lib/errorStore.js"
 
+// 被动消息回复参数（官方规则：https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_messages.post.html）
+// 被动消息有效期60分钟（留1分钟余量）；每条消息回复上限官方默认5次，机器人开发者兼任目标群群主/管理员时为50次
+const PASSIVE_WINDOW = 59 * 60000
+const PASSIVE_POOL_SIZE = 5
+const passiveReplyLimit = () => {
+    const n = Number(config.passiveReplyLimit)
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 5
+}
+// 被动凭证过期/回复额度耗尽的官方错误码
+const PASSIVE_EXHAUSTED_CODES = new Set(["304103", "40034005", "40034026"])
+
 export const sendMethods = {
     // QQ官方Bot群聊默认无主动消息权限，媒体/文件消息必须携带被动回复凭证(msg_id/event_id)。
-    // sendFile 等通道不经过事件对象，这里回退使用该群/用户最近一条收到的消息作为被动回复锚点
-    // （被动回复有效期5分钟，留30秒余量）
+    // sendFile 等通道不经过事件对象，这里从事件池选取该群/用户窗口内、额度未耗尽的最新被动锚点
+    // （被动消息有效期60分钟，留1分钟余量；官方新规每条消息可回复5次，配额耗尽由 rotatePassiveSource 轮换）
     fixPassiveSource(data, event, type, openid) {
-        if (event?.id || event?.event_id) return event
-        const anchor = data.bot?._passiveAnchor?.[`${type}:${openid}`]
-        if (anchor?.id && Date.now() - anchor.time < 270000)
-            return { ...event, id: anchor.id, event_id: anchor.event_id }
+        const key = `${type}:${openid}`
+        const pool = data.bot?._passivePool?.[key]
+        if (event?.id || event?.event_id) {
+            // 事件自带被动凭证：关联事件池中的同源锚点，发送成功后据此回写额度计数
+            const anchor = pool?.find(i => i.id === event.id)
+            if (anchor) event._anchor = anchor
+            event._anchorKey = key
+            return event
+        }
+        const anchor = pool?.find(i => !i.exhausted && (i.count ?? 0) < passiveReplyLimit() && Date.now() - i.time < PASSIVE_WINDOW)
+        if (anchor)
+            return { ...event, id: anchor.id, event_id: anchor.event_id, _anchor: anchor, _anchorKey: key }
         return event
+    },
+
+    // 记录被动回复锚点（每群/好友保留最近数条构成事件池）：
+    // sendFile/pickGroup/pickFriend 等不经过事件对象的发送通道由 fixPassiveSource 从池中回退选取
+    recordPassiveAnchor(data, type, openid) {
+        const bot = data.bot
+        if (!bot || !data.message_id) return
+        const key = `${type}:${openid}`
+        const anchor = { id: data.message_id, event_id: data.event_id, time: Date.now(), count: 0 }
+        const pool = (bot._passivePool ||= {})[key] ||= []
+        const i = pool.findIndex(a => a.id === anchor.id)
+        if (i > -1) pool.splice(i, 1)
+        pool.unshift(anchor)
+        if (pool.length > PASSIVE_POOL_SIZE) pool.splice(PASSIVE_POOL_SIZE)
+        // 单槽别名与池首保持同引用，兼容旧读取方
+        ;(bot._passiveAnchor ||= {})[key] = anchor
+    },
+
+    // 被动回复额度耗尽/凭证过期（304103/40034005/40034026）时轮换被动凭证：
+    // 先把当前锚点标记耗尽，再优先换事件池内其它可用锚点；无锚点可换则去除凭证降级为主动消息重试一次
+    rotatePassiveSource(data, event, err) {
+        const code = String(err?.detail?.code ?? "")
+        if (!PASSIVE_EXHAUSTED_CODES.has(code) && ![...PASSIVE_EXHAUSTED_CODES].some(i => String(err?.message || "").includes(i)))
+            return false
+        const current = event._anchor
+        if (current) current.exhausted = true
+        const fresh = i => Date.now() - i.time < PASSIVE_WINDOW
+        const next = data.bot?._passivePool?.[event._anchorKey]?.find(i => i !== current && !i.exhausted && (i.count ?? 0) < passiveReplyLimit() && fresh(i))
+        if (next) {
+            Bot.makeLog("mark", [`被动回复额度耗尽或凭证过期(${code})，轮换备用锚点续发`], data.self_id)
+            event.id = next.id
+            event.event_id = next.event_id
+            event._anchor = next
+            return true
+        }
+        Bot.makeLog("mark", [`被动回复额度耗尽或凭证过期(${code})且无备用锚点，去除凭证降级为主动消息续发`], data.self_id)
+        delete event.id
+        delete event.event_id
+        event._anchor = null
+        return true
     },
 
     async sendMsg(data, send, msg) {
@@ -101,10 +160,21 @@ export const sendMethods = {
 
     sendFriendMsg(data, msg, event) {
         event = this.fixPassiveSource(data, event, "user", data.user_id)
-        return this.sendMsg(data, msg => {
+        return this.sendMsg(data, async segs => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
             if (data.is_wakeup) event ? event.is_wakeup = true : event = { is_wakeup: true }
-            return data.bot.sdk.sendPrivateMessage(data.user_id, msg, event, { stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
+            const send = () => data.bot.sdk.sendPrivateMessage(data.user_id, segs, event, { stream: config.stream || data.stream ? true : false, chunkSize: data.chunkSize || config.chunkSize, delay: data.delay || config.delay })
+            let ret
+            try {
+                ret = await send()
+            } catch (err) {
+                // 被动额度耗尽/凭证过期：轮换备用锚点或降级主动消息后重发一次
+                if (!(event?._anchorKey && this.rotatePassiveSource(data, event, err))) throw err
+                ret = await send()
+            }
+            // 被动回复成功：回写事件池锚点的已用额度（is_wakeup 唤醒消息被SDK剥掉凭证转主动，不计）
+            if (event?._anchor && !event.is_wakeup) event._anchor.count++
+            return ret
         }, msg).then(rets => {
             // C2C主动消息发送成功即确认好友关系（对非好友会发送失败）：
             // "添加后从未发言、无任何私聊记录"的好友在收到推送时自动回到好友表
@@ -129,9 +199,20 @@ export const sendMethods = {
 
     sendGroupMsg(data, msg, event) {
         event = this.fixPassiveSource(data, event, "group", data.group_id)
-        return this.sendMsg(data, msg => {
+        return this.sendMsg(data, async segs => {
             if (data.smallbtn) event ? event.smallbtn = true : event = { smallbtn: true }
-            return data.bot.sdk.sendGroupMessage(data.group_id, msg, event)
+            const send = () => data.bot.sdk.sendGroupMessage(data.group_id, segs, event)
+            let ret
+            try {
+                ret = await send()
+            } catch (err) {
+                // 被动额度耗尽/凭证过期：轮换备用锚点或降级主动消息后重发一次
+                if (!(event?._anchorKey && this.rotatePassiveSource(data, event, err))) throw err
+                ret = await send()
+            }
+            // 被动回复成功：回写事件池锚点的已用额度
+            if (event?._anchor) event._anchor.count++
+            return ret
         }, msg)
     },
 

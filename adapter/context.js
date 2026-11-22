@@ -23,6 +23,10 @@ export const { config, configSave } = await makeConfig("QQBot", {
     // 使用统计总开关：默认关闭，关闭时不记录数据、不注册展示页
     stat: false,
     recordSendErrors: true,
+    // 每条消息被动回复次数上限：官方默认5次，机器人开发者兼任目标群群主/管理员时为50次。
+    // 开发者身份无法通过API按群判定，若开发者账号在常用群有群主/管理员身份可调到50，
+    // 直播推送等长内容推送可吃满单条消息的被动额度（额度耗尽后自动轮换事件池其它锚点）
+    passiveReplyLimit: 5,
     // 合并转发消息发送方式：split=逐条拆发（默认） / merge=合并为一条消息，条目间用分割线隔开 / image=渲染为一张图片发送 / url=发送伪造合并信息页面链接 / card=发送伪造合并信息卡片
     forwardMethod: "split",
     // 头像缓存有效期（分钟）：官方头像CDN下发 cache-control: max-age=30天，渲染插件（schedule生日列表、
